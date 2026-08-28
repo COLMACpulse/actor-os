@@ -107,6 +107,17 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 .sBtn.savebtn{background:#E0A23C;color:#12100c;border-color:#E0A23C;font-weight:700}
 .sBtn.savebtn.done{background:transparent;color:#5cae7e;border-color:#5cae7e}
 .mk{display:inline-block;font-size:8.5px;letter-spacing:.14em;color:#12100c;background:var(--gold);border-radius:3px;padding:1px 6px;margin-left:7px;vertical-align:middle}
+
+.charrow{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:stretch;border:1px solid var(--line2);border-radius:22px;overflow:hidden;background:var(--p1)}
+.chip.on{border-color:var(--gold);background:rgba(224,162,60,.14)}
+.chipname{background:none;border:0;color:var(--mut);font-family:inherit;font-size:13px;padding:10px 6px 10px 15px;cursor:pointer;min-height:44px}
+.chip.on .chipname{color:var(--gold);font-weight:700}
+.chipname i{font-style:normal;font-size:10.5px;opacity:.6;margin-left:7px}
+.chipx2{background:none;border:0;border-left:1px solid var(--line2);color:var(--faint);font-size:15px;
+ padding:0 13px;cursor:pointer;min-height:44px;line-height:1}
+.chipx2:hover{color:#d9694e}
+.chip.on .chipx2{border-left-color:rgba(224,162,60,.4)}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · No deadline · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
 <nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="send">SEND</button></nav>
@@ -160,9 +171,11 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 <div class="grid2" style="margin-top:10px"><div><label>Expected reader cue</label><input id="cue" value=""><label>Your line</label><textarea id="actorLine"></textarea></div><div><label>Display</label><select id="displayMode"><option>FULL_LINE</option><option selected>FIRST_PHRASE</option><option>FIRST_WORD</option><option>INITIALS</option><option>CUE_ONLY</option><option>OFF</option></select><label>Advance</label><select id="advanceMode"><option>CUE_AWARE</option><option>MANUAL</option></select><label>Recognized cue test</label><input id="heard" value=""><button class="mini" onclick="testCue()">TEST CUE</button></div></div>
 <div class="take"><div><b id="displayPreview"></b><small id="cueResult">Cue engine standing by.</small></div><span class="pill">MEMORIZER + CUE ENGINE</span></div>
 </div></div>
-<div class="section"><h3>Character Bootprint + Reader</h3><div class="inside grid2"><div><label>Anchor phrase</label><input id="anchor"><label>Playable action</label><input id="action"><label>Forbidden action</label><input id="forbidden"></div><div><label>Posture / physical anchor</label><input id="posture"><label>Reader</label><input id="reader" placeholder="Name / device voice / recorded pass"><div class="row"><button class="mini" id="readerRec">● RECORD READER PASS</button><button class="mini" id="readerStop" disabled>STOP</button></div></div></div></div>
-</section>
-<section id="shoot" class="panel">
+<div class="section"><h3>Format</h3><div class="inside">
+    <select id="captureFormat" onchange="applyFrame(this.value);if(window.PC){PC.format=this.value;}"><option value="CASTING">CASTING &middot; 16:9 landscape</option><option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
+    <div class="hidden"><b id="lightVal">—</b><b id="rmsVal">—</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet">nothing needs your attention</div></div>
+  </div></div>
+</div>
 <div id="stage">
   <video id="stageVid" autoplay muted playsinline></video>
   <div class="sTop">
@@ -177,13 +190,14 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
     <button class="sRec" id="sRec" onclick="stageRec()" aria-label="record"></button>
   </div>
 </div>
+<section id="shoot" class="panel">
 <div id="modePick">
   <div class="am">How are you shooting this?</div>
   <div class="modes">
     <button class="mode" onclick="startMode('READER')">
       <b>With a reader</b><span>Someone is off camera reading with you. Nothing on screen but the frame.</span></button>
     <button class="mode" onclick="startMode('PARTNER')">
-      <b>Scene partner</b><span>The app reads the other part from your sides and waits for you.</span></button>
+      <b>Scene partner</b><span>The app plays back the lines you recorded and waits for you.</span></button>
     <button class="mode" onclick="startMode('PROMPTER')">
       <b>Teleprompter</b><span>Your lines on screen, at whatever level you want to see them.</span></button>
   </div>
@@ -191,9 +205,10 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
     Scene partner and teleprompter need sides. Upload them in PREP first.</div>
   <div class="section"><h3>Format</h3><div class="inside">
     <select id="captureFormat" onchange="applyFrame(this.value);if(window.PC){PC.format=this.value;}"><option value="CASTING">CASTING &middot; 16:9 landscape</option><option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
-    <div class="hidden"><b id="lightVal">—</b><b id="rmsVal">—</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet">nothing needs your attention</div></div>
+    <div class="hidden"><b id="lightVal">&mdash;</b><b id="rmsVal">&mdash;</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet">nothing needs your attention</div><div id="takeList"></div></div>
   </div></div>
 </div>
+</section>
 <section id="cut" class="panel"><div class="am">Actor Cut Room rules: DROP / HOLD / SURVIVOR. One survivor per scene. The software does not score acting.</div><div id="unsavedBar" class="unsaved"></div>
 <div class="section"><h3>Takes</h3><div class="inside" id="cutTakes"></div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="grid2"><div><label>Trim in (sec)</label><input id="trimIn" type="number" step=".1" value="0"></div><div><label>Trim out (sec)</label><input id="trimOut" type="number" step=".1" value="0"></div></div><div class="row"><button onclick="applyTrim()">APPLY TO SURVIVOR</button><button onclick="addSlate()">+ SLATE</button></div></div></div></section>
 <section id="send" class="panel"><div class="am">One master, purpose-built derivatives. Never compress the compressed copy.</div><div class="section"><h3>Destination Engine</h3><div class="inside"><div class="dest" id="destinations"></div><div id="sendCheck" class="take" style="margin-top:10px"></div><div class="row" style="margin-top:10px"><button class="primary" onclick="preparePackage()">PREPARE PACKAGE</button><button onclick="sharePackage()">SHARE / EXPORT</button></div></div></div><div class="section"><h3>Delivery + Archive Ledger</h3><div class="inside"><div class="receipt" id="receipt">No package prepared.</div></div></div></section>
@@ -284,8 +299,8 @@ function renderSend(){$('destinations').innerHTML=Object.entries(profiles).map((
 function preparePackage(){let surv=state.takes.filter(t=>t.status==='SURVIVOR');if(!surv.length)return alert('Select at least one survivor.');state.package={id:'PKG-'+Date.now().toString(36).toUpperCase(),project:state.job.project,role:state.job.role,destination:state.destination,profile:profiles[state.destination][0],sequence:surv.map(t=>({scene:t.scene,take:t.n,sourceId:t.id,trimIn:t.trimIn||0,trimOut:t.trimOut||0})),masterPolicy:'IMMUTABLE',derivativePolicy:'FROM_MASTER_ONLY',preparedAt:new Date().toISOString(),deliveryStatus:'PREPARED',nativeRender:'REQUIRED_FOR_TRUE_COMPOSITION_AND_TCE'};localStorage.setItem(KEY,JSON.stringify(state));$('receipt').textContent=JSON.stringify(state.package,null,2)}
 async function sharePackage(){if(!state.package)return alert('Prepare package first.');let text=`ACTOR OS package ${state.package.id} · ${state.package.project} · ${profiles[state.destination][0]}`;if(navigator.share){try{await navigator.share({title:'ACTOR OS Package',text})}catch(e){}}else navigator.clipboard?.writeText(text);state.package.deliveryStatus='HANDOFF_INITIATED';localStorage.setItem(KEY,JSON.stringify(state));$('receipt').textContent=JSON.stringify(state.package,null,2)}
 function loadState(){for(let k of ['project','role','due','instructions','research'])if(state.job[k]!=null)$(k).value=state.job[k];renderJob();renderPrompt();renderTakes();renderSend()}loadState();
-</script><script src="camera_instrument_v07.js"></script>
-<a href="PERFORMER_CAMERA_v0_8.html" style="position:fixed;right:12px;bottom:12px;z-index:9999;background:#d6a13a;color:#151005;padding:10px 13px;border-radius:10px;font:700 12px system-ui;text-decoration:none">OPEN CAMERA INSTRUMENT</a>
+</script>
+
 <script src="performer_camera_v08.js"></script>
 <script>
 if('serviceWorker' in navigator){
@@ -310,7 +325,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 <script src="qr.js"></script>
 <script>
 /* ===================== SIDES + STAGE ===================== */
-let SIDES={beats:[],speakers:[],me:'',script:[],startIx:-1,endIx:-1};
+let SIDES={beats:[],speakers:[],me:'',script:[],startIx:-1,endIx:-1,omit:[]};
 function togglePaste(){const w=$('pasteWrap');w.style.display=w.style.display==='none'?'block':'none';}
 function toggleAdv(){const b=$('advBody');b.style.display=b.style.display==='none'?'block':'none';}
 $('sidesFile').addEventListener('change',async e=>{
@@ -429,23 +444,48 @@ function pickMe(n){
  }
  renderSides(); boothRefresh();
 }
+function omitChar(n){
+ SIDES.omit=SIDES.omit||[];
+ if(SIDES.omit.indexOf(n)<0)SIDES.omit.push(n);
+ if(SIDES.me===n)SIDES.me='';
+ saveRange(); renderSides(); boothRefresh();
+}
+function unomitAll(){ SIDES.omit=[]; saveRange(); renderSides(); boothRefresh(); }
+function visibleSpeakers(){
+ const om=SIDES.omit||[];
+ return SIDES.speakers.filter(x=>om.indexOf(x.name)<0);
+}
 function renderSides(){
- const sp=SIDES.speakers;
- let h='<div class="am" style="margin:0 0 10px">Which one are you?</div><div class="row" style="gap:7px;flex-wrap:wrap">';
- h+=sp.map(x=>`<button class="${SIDES.me===x.name?'':'ghost'}" onclick="pickMe('${x.name.replace(/'/g,"\\'")}')">${x.name} <small style="opacity:.6">${x.lines}</small></button>`).join('');
+ const sp=visibleSpeakers(), om=SIDES.omit||[];
+ let h='<div class="am" style="margin:0 0 10px">Which character are you?</div>';
+ h+='<div class="charrow">';
+ h+=sp.map(x=>{
+  const on=SIDES.me===x.name;
+  return `<span class="chip${on?' on':''}">
+    <button class="chipname" onclick="pickMe('${x.name.replace(/'/g,"\\'")}')">${esc2(x.name)}<i>${x.lines}</i></button>
+    <button class="chipx2" title="not in this scene" onclick="omitChar('${x.name.replace(/'/g,"\\'")}')">&times;</button>
+  </span>`;}).join('');
  h+='</div>';
+ if(om.length) h+=`<div class="am" style="margin-top:9px">${om.length} hidden &mdash; ${om.map(esc2).join(', ')}
+   <button class="mini ghost" style="margin-left:8px" onclick="unomitAll()">SHOW ALL</button></div>`;
+
  if(SIDES.me){
-  const st=ActorSides.stats(SIDES.beats,SIDES.me);
-  const mins=Math.floor(st.estSeconds/60), secs=st.estSeconds%60;
-  h+=`<div class="take" style="margin-top:12px"><div><b>${st.lines} line${st.lines===1?'':'s'} &middot; ${st.words} words</b>
-   <small>about ${mins?mins+'m ':''}${secs}s of speaking</small></div><span class="pill">${esc2(SIDES.me)}</span></div>`;
-  h+=`<div class="am" style="margin:12px 0 8px">Tap a line to mark where the scene <b>starts</b> and <b>ends</b>. Casting usually writes these by hand, so they are not in the file &mdash; set them here once and they stick.
+  const act=activeScript();
+  const mine=act.filter(b=>b.mine);
+  const words=mine.reduce((n,b)=>n+b.text.split(/\s+/).length,0);
+  const secs=Math.round(words/2.6), mins=Math.floor(secs/60);
+  h+=`<div class="take" style="margin-top:12px"><div><b>${mine.length} line${mine.length===1?'':'s'} &middot; ${words} words</b>
+   <small>about ${mins?mins+'m ':''}${secs%60}s of speaking${rangeActive()?' &middot; scene marked':''}</small></div>
+   <span class="pill">${esc2(SIDES.me)}</span></div>`;
+
+  h+=`<div class="am" style="margin:12px 0 8px">Tap <b>&#9654;</b> where the scene starts and <b>&#9632;</b> where it ends.
+   Casting usually writes these by hand, so they are not in the file &mdash; set them once and they stick.
    ${rangeActive()?`<button class="mini ghost" style="margin-left:8px" onclick="clearRange()">CLEAR</button>`:''}</div>`;
-  h+='<div style="margin-top:6px;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:9px">';
+  h+='<div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:9px">';
   SIDES.script.forEach((b,i)=>{
    const on=inRange(i), isS=(SIDES.startIx===i), isE=(SIDES.endIx===i);
    h+=`<div style="padding:8px 11px;border-bottom:1px solid var(--line);font-size:12.5px;
-      ${on?'':'opacity:.32'};${isS||isE?'background:rgba(224,162,60,.10)':''}">
+      ${on?'':'opacity:.3'};${isS||isE?'background:rgba(224,162,60,.10)':''}">
      <div style="display:flex;gap:9px;align-items:flex-start">
       <div style="flex:1;min-width:0">
        <b style="font-size:9.5px;letter-spacing:.14em;color:${b.mine?'var(--gold)':'var(--mut)'}">${esc2(b.who)}</b>
@@ -579,11 +619,11 @@ function setEnd(i){ SIDES.endIx=i; if(SIDES.startIx>i)SIDES.startIx=-1; saveRang
 function clearRange(){ SIDES.startIx=-1; SIDES.endIx=-1; saveRange(); renderSides(); boothRefresh(); }
 function saveRange(){
  try{ localStorage.setItem('actor_os_range_'+(SIDES.file||'x'),
-   JSON.stringify({s:SIDES.startIx,e:SIDES.endIx,me:SIDES.me})); }catch(e){}
+   JSON.stringify({s:SIDES.startIx,e:SIDES.endIx,me:SIDES.me,om:SIDES.omit||[]})); }catch(e){}
 }
 function loadRange(){
  try{ const r=JSON.parse(localStorage.getItem('actor_os_range_'+(SIDES.file||'x'))||'null');
-   if(r){ SIDES.startIx=r.s; SIDES.endIx=r.e; } }catch(e){}
+   if(r){ SIDES.startIx=r.s; SIDES.endIx=r.e; SIDES.omit=r.om||[]; } }catch(e){}
 }
 /* the script the take actually runs on */
 function activeScript(){
@@ -598,7 +638,8 @@ function boothKey(b){ return ActorReader.keyFor(SIDES.file||'sides', b.who, b.te
 
 async function boothRefresh(){
  if(!SIDES.me||!SIDES.script.length){ $('boothWrap').style.display='none'; return; }
- const others=activeScript().filter(b=>!b.mine);
+ const om=SIDES.omit||[];
+ const others=activeScript().filter(b=>!b.mine && om.indexOf(b.who)<0);
  if(!others.length){ $('boothWrap').style.display='none'; return; }
  $('boothWrap').style.display='';
  const have=await ActorReader.all();
