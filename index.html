@@ -192,6 +192,22 @@ nav button:hover b{color:var(--bone)}
 <div id="sidesOut" style="margin-top:12px"></div>
 </div></div>
 
+<div class="section"><h3>You</h3><div class="inside">
+<div class="grid2">
+ <div><label>Name as casting sees it</label>
+  <input id="actorName" placeholder="BRENDAN McCARTHY" oninput="localStorage.setItem('actor_os_name',this.value);namePreview()"></div>
+ <div><label>Role</label>
+  <input id="actorRole" placeholder="from your sides" oninput="localStorage.setItem('actor_os_role',this.value);namePreview()"></div>
+</div>
+<label class="cbrow"><input type="checkbox" id="useURL" onchange="toggleURL()"><span>Include a link to my page</span></label>
+<div id="urlWrap" style="display:none;margin-top:9px">
+ <input id="actorURL" placeholder="https://brendanmccarthyactor.com" oninput="localStorage.setItem('actor_os_url',this.value)">
+</div>
+<div class="am" style="margin-top:10px">Files come out named the way Actors Access names them &mdash; <b id="fnPreview">NAME_Role_Tk1.mp4</b></div>
+</div>
+<div class="row" style="margin-top:11px"><button class="ghost mini" onclick="showMore()">More options</button></div>
+<div></div></div>
+
 <div class="section" id="boothWrap" style="display:none"><h3>Reader booth</h3><div class="inside">
 <div class="am" style="margin:0 0 11px">Record every line that is not yours. Your voice, your pace &mdash; the take plays these back so you have something real to work off.</div>
 <div id="boothList"></div>
@@ -201,17 +217,7 @@ nav button:hover b{color:var(--bone)}
 </div>
 </div></div>
 
-<div class="section"><h3>You</h3><div class="inside">
-<div class="grid2">
- <div><label>Name as casting sees it</label>
-  <input id="actorName" placeholder="BRENDAN McCARTHY" oninput="localStorage.setItem('actor_os_name',this.value)"></div>
- <div><label>Your page &mdash; optional, for the slate QR</label>
-  <input id="actorURL" placeholder="https://brendanmccarthyactor.com" oninput="localStorage.setItem('actor_os_url',this.value)"></div>
-</div>
-<div class="am" style="margin-top:10px">Files come out named the way Actors Access names them &mdash; <b id="fnPreview">NAME_Role_Tk1.mp4</b></div>
-</div></div>
-
-<div class="section"><h3>Slate move <span style="color:var(--faint);font-weight:400;font-size:10px;letter-spacing:.1em">OPTIONAL &middot; OFF</span></h3><div class="inside">
+<div class="section" id="slateSec" style="display:none"><h3>Slate move <span style="color:var(--faint);font-weight:400;font-size:10px;letter-spacing:.1em">OPTIONAL &middot; OFF</span></h3><div class="inside">
 <div class="am" style="margin:0 0 11px">Shoot one static full-body slate. This punches in from head-and-shoulders to full body, <b>holds</b>, then settles closer &mdash; so you get both frames without the floor space for a wide shot.
 <br><br>Every pixel comes from your frame. Nothing is generated, nothing is enlarged. If the move would need to enlarge the picture it is refused rather than softened.
 <br><br><b>Casting offices disagree on this.</b> Some coaches teach it; at least one casting director asks for no pan at all. The hold at full body is there for that reason. Check the instructions on your breakdown.</div>
@@ -227,7 +233,7 @@ nav button:hover b{color:var(--bone)}
 </div>
 </div></div>
 
-<div class="section" id="advWrap"><h3><button class="ghost mini" onclick="toggleAdv()" style="border:0;padding:0;color:var(--gold)">&#9656; Job details, instructions, research</button></h3>
+<div class="section" id="advWrap" style="display:none"><h3><button class="ghost mini" onclick="toggleAdv()" style="border:0;padding:0;color:var(--gold)">&#9656; Job details, instructions, research</button></h3>
 <div class="inside" id="advBody" style="display:none"><div class="grid2"><div><label>Project</label><input id="project" value="Untitled Performance"><label>Role / piece</label><input id="role" placeholder="Role, scene, song, set..."></div><div><label>Instructions</label><textarea id="instructions" placeholder="Slate, framing, naming, office notes..."></textarea><label>Research notes</label><textarea id="research" placeholder="Project, director, casting, context..."></textarea></div></div>
 <div class="grid2" style="margin-top:10px"><div><label>Expected reader cue</label><input id="cue" value=""><label>Your line</label><textarea id="actorLine"></textarea></div><div><label>Display</label><select id="displayMode"><option>FULL_LINE</option><option selected>FIRST_PHRASE</option><option>FIRST_WORD</option><option>INITIALS</option><option>CUE_ONLY</option><option>OFF</option></select><label>Advance</label><select id="advanceMode"><option>CUE_AWARE</option><option>MANUAL</option></select><label>Recognized cue test</label><input id="heard" value=""><button class="mini" onclick="testCue()">TEST CUE</button></div></div>
 <div class="take"><div><b id="displayPreview"></b><small id="cueResult">Cue engine standing by.</small></div><span class="pill">MEMORIZER + CUE ENGINE</span></div>
@@ -519,20 +525,21 @@ function loadSides(text,fname){
  renderSides();
 }
 function pickMe(n){
- SIDES.me=n; SIDES.script=ActorSides.script(SIDES.beats,n);
+ SIDES.me=n;
+ if($('actorRole')&&!$('actorRole').value)$('actorRole').value=n; SIDES.script=ActorSides.script(SIDES.beats,n);
  loadRange();
  if(SIDES.startIx<0 && window.PDF_MARKERS && PDF_MARKERS.start>=0){
   // a typed marker, if the file happened to carry one
   const near=SIDES.script.findIndex(b=>b.mine);
   SIDES.startIx=near>=0?near:0;
  }
- renderSides(); boothRefresh();
+ renderSides(); boothRefresh(); try{namePreview();}catch(e){}
 }
 function omitChar(n){
  SIDES.omit=SIDES.omit||[];
  if(SIDES.omit.indexOf(n)<0)SIDES.omit.push(n);
  if(SIDES.me===n)SIDES.me='';
- saveRange(); renderSides(); boothRefresh();
+ saveRange(); renderSides(); boothRefresh(); try{namePreview();}catch(e){}
 }
 function unomitAll(){ SIDES.omit=[]; saveRange(); renderSides(); boothRefresh(); }
 function visibleSpeakers(){
@@ -618,7 +625,11 @@ window.addEventListener('load',()=>{ setTimeout(rehydrateTakes,300); });
 
 window.addEventListener('load',()=>{
  setTimeout(()=>{
-  const n=localStorage.getItem('actor_os_name'), u=localStorage.getItem('actor_os_url');
+  const n=localStorage.getItem('actor_os_name'), u=localStorage.getItem('actor_os_url'),
+        rl=localStorage.getItem('actor_os_role'), uu=localStorage.getItem('actor_os_useurl');
+  if(rl&&$('actorRole'))$('actorRole').value=rl;
+  if($('useURL')&&uu==='1'){ $('useURL').checked=true; toggleURL(); }
+  setTimeout(namePreview,60);
   if(n&&$('actorName'))$('actorName').value=n;
   if(u&&$('actorURL'))$('actorURL').value=u;
   
@@ -1000,6 +1011,27 @@ function remoteUI(){
  }
 }
 
+
+function currentRole(){
+ const typed=($('actorRole')&&$('actorRole').value||'').trim();
+ return typed || (typeof SIDES!=='undefined' && SIDES.me) || '';
+}
+function showMore(){
+ ['slateSec','advWrap'].forEach(id=>{ const el=$(id); if(el&&el.style)el.style.display=''; });
+ const b=$('advBody'); if(b&&b.style)b.style.display='block';
+ const el=$('slateSec'); if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function toggleURL(){
+ const c=$('useURL'), w=$('urlWrap');
+ if(!c||!w||!w.style)return;
+ w.style.display=c.checked?'block':'none';
+ try{ localStorage.setItem('actor_os_useurl', c.checked?'1':'0'); }catch(e){}
+}
+function namePreview(){
+ const el=$('fnPreview');
+ if(el&&el.textContent!==undefined) el.textContent=takeFilename({n:1,type:'video/mp4'});
+}
+
 /* ===== READER BOOTH UI ===== */
 let BOOTH={}, TAKESBY={}, boothBusy=null, boothQueue=[], boothSeq=false;
 function boothKey(b){ return ActorReader.keyFor(SIDES.file||'sides', b.who, b.text); }
@@ -1146,7 +1178,7 @@ function actorName(){
 function titleCase(x){ return String(x||'').toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase()); }
 function takeFilename(t){
  const who=actorName().replace(/\s+/g,' ').trim();
- const role=titleCase(SIDES.me||($('role')&&$('role').value)||'');
+ const role=titleCase((typeof currentRole==='function'?currentRole():'')||'');
  const ext=(t.type||'').includes('mp4')?'mp4':((t.type||'').includes('webm')?'webm':'mp4');
  const label = t.isSlate ? 'Slate' : ('Tk'+t.n);
  const parts=[who||'TAKE', role, label].filter(Boolean);
