@@ -27,6 +27,19 @@ A.keyFor=function(scriptId,who,text){
  for(let i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}
  return (scriptId||'sides')+':'+(h>>>0).toString(36);
 };
+A.putTakeFor=async function(lineId,blob,meta){
+ const db=await open();
+ const id=lineId+'#'+Date.now().toString(36);
+ return new Promise((res,rej)=>{
+  const tx=db.transaction(STORE,'readwrite');
+  tx.objectStore(STORE).put(Object.assign({id,line:lineId,blob,at:Date.now()},meta||{}));
+  tx.oncomplete=()=>res(id); tx.onerror=()=>rej(tx.error);
+ });
+};
+A.takesFor=async function(lineId){
+ const all=await A.all();
+ return all.filter(c=>c.line===lineId).sort((a,b)=>a.at-b.at);
+};
 A.put=async function(id,blob,meta){
  const db=await open();
  return new Promise((res,rej)=>{

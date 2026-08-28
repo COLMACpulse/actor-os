@@ -86,6 +86,16 @@ crash.
 
 ## Reader booth
 
+Mark where the scene starts and ends, drop any character who is not in it, then
+hit **READY** to lock the scene. Only then does the booth appear &mdash; so you never
+record a line that is not in your scene.
+
+Each line records as many takes as you want. Listen back, keep the one you like,
+delete the rest. When every line has a take you can **play the whole read** back to
+back &mdash; the entire other side of the scene, in your voice.
+
+On a real four-page side that is 10 lines instead of 23.
+
 After you pick your character, PREP lists every line that is not yours with a
 record button. Record them once; they are stored against the content of the line,
 so re-uploading the same sides keeps the recordings.

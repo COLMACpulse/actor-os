@@ -118,6 +118,15 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
  padding:0 13px;cursor:pointer;min-height:44px;line-height:1}
 .chipx2:hover{color:#d9694e}
 .chip.on .chipx2{border-left-color:rgba(224,162,60,.4)}
+
+.takepills{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.tpill{display:inline-flex;align-items:stretch;border:1px solid var(--line2);border-radius:20px;overflow:hidden;background:var(--p2)}
+.tpill.on{border-color:var(--gold);background:rgba(224,162,60,.14)}
+.tpill button{background:none;border:0;color:var(--mut);font-family:inherit;font-size:11.5px;padding:8px 10px;cursor:pointer;min-height:40px}
+.tpill.on button{color:var(--gold)}
+.tpill button:first-child{padding-right:6px}
+.tpill button:last-child{padding-left:6px;border-left:1px solid var(--line2);font-size:14px}
+.tpill.on button:last-child{border-left-color:rgba(224,162,60,.35)}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
 <nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="save">SAVE</button><button data-tab="send">SEND</button></nav>
@@ -355,7 +364,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 <script src="slatemove.js"></script>
 <script>
 /* ===================== SIDES + STAGE ===================== */
-let SIDES={beats:[],speakers:[],me:'',script:[],startIx:-1,endIx:-1,omit:[]};
+let SIDES={beats:[],speakers:[],me:'',script:[],startIx:-1,endIx:-1,omit:[],ready:false,pick:{}};
 function togglePaste(){const w=$('pasteWrap');w.style.display=w.style.display==='none'?'block':'none';}
 function toggleAdv(){const b=$('advBody');b.style.display=b.style.display==='none'?'block':'none';}
 $('sidesFile').addEventListener('change',async e=>{
@@ -649,11 +658,11 @@ function setEnd(i){ SIDES.endIx=i; if(SIDES.startIx>i)SIDES.startIx=-1; saveRang
 function clearRange(){ SIDES.startIx=-1; SIDES.endIx=-1; saveRange(); renderSides(); boothRefresh(); }
 function saveRange(){
  try{ localStorage.setItem('actor_os_range_'+(SIDES.file||'x'),
-   JSON.stringify({s:SIDES.startIx,e:SIDES.endIx,me:SIDES.me,om:SIDES.omit||[]})); }catch(e){}
+   JSON.stringify({s:SIDES.startIx,e:SIDES.endIx,me:SIDES.me,om:SIDES.omit||[],rdy:!!SIDES.ready,pk:SIDES.pick||{}})); }catch(e){}
 }
 function loadRange(){
  try{ const r=JSON.parse(localStorage.getItem('actor_os_range_'+(SIDES.file||'x'))||'null');
-   if(r){ SIDES.startIx=r.s; SIDES.endIx=r.e; SIDES.omit=r.om||[]; } }catch(e){}
+   if(r){ SIDES.startIx=r.s; SIDES.endIx=r.e; SIDES.omit=r.om||[]; SIDES.ready=!!r.rdy; SIDES.pick=r.pk||{}; } }catch(e){}
 }
 /* the script the take actually runs on */
 function activeScript(){
@@ -790,7 +799,7 @@ window.addEventListener('load',()=>{
 });
 
 /* ===== READER BOOTH UI ===== */
-let BOOTH={}, boothBusy=null, boothQueue=[], boothSeq=false;
+let BOOTH={}, TAKESBY={}, boothBusy=null, boothQueue=[], boothSeq=false;
 function boothKey(b){ return ActorReader.keyFor(SIDES.file||'sides', b.who, b.text); }
 
 async function boothRefresh(){
@@ -799,34 +808,97 @@ async function boothRefresh(){
  const others=activeScript().filter(b=>!b.mine && om.indexOf(b.who)<0);
  if(!others.length){ $('boothWrap').style.display='none'; return; }
  $('boothWrap').style.display='';
+
+ if(!SIDES.ready){
+  // Nothing to record until the scene is locked. Marking start and end first
+  // means you never record a line that is not in the scene.
+  const marked=rangeActive();
+  $('boothList').innerHTML=`<div class="am" style="margin:0">
+    ${marked?`Scene is marked &mdash; <b>${others.length} line${others.length===1?'':'s'}</b> to record.`
+            :`Mark where the scene starts and ends above, then lock it in. Right now that is <b>${others.length} lines</b> &mdash; the whole document.`}
+   </div>
+   <div class="row" style="margin-top:11px"><button onclick="boothReady()">READY &mdash; LOCK THE SCENE</button></div>`;
+  return;
+ }
+
  const have=await ActorReader.all();
- BOOTH={}; have.forEach(c=>BOOTH[c.id]=c);
- const done=others.filter(b=>BOOTH[boothKey(b)]).length;
+ BOOTH={}; TAKESBY={};
+ have.forEach(c=>{ if(c.line){ (TAKESBY[c.line]=TAKESBY[c.line]||[]).push(c); } else BOOTH[c.id]=c; });
+ Object.keys(TAKESBY).forEach(k=>TAKESBY[k].sort((a,b)=>a.at-b.at));
+
+ const picked=k=>{ const arr=TAKESBY[k]||[]; const sel=SIDES.pick&&SIDES.pick[k];
+   return arr.find(c=>c.id===sel) || arr[arr.length-1] || null; };
+ const done=others.filter(b=>picked(boothKey(b))).length;
+
  let h=`<div class="take" style="margin:0 0 11px"><div><b>${done} of ${others.length} recorded</b>
-   <small>${done===others.length?'Scene partner is ready.':'Scene partner needs all of them.'}</small></div>
-   <span class="pill">${done===others.length?'READY':'INCOMPLETE'}</span></div>`;
+   <small>${done===others.length?'Every line has a take. Ready for the next stage.':'Record each line, keep the one you like.'}</small></div>
+   <span class="pill" style="${done===others.length?'color:#5cae7e;border-color:#5cae7e':''}">${done===others.length?'COMPLETE':'IN PROGRESS'}</span></div>`;
+ h+=`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:11px">
+   <button class="ghost" onclick="boothUnready()">UNLOCK SCENE</button>
+   ${done===others.length?`<button onclick="boothStitch()">&#9654; PLAY THE WHOLE READ</button>`:''}</div>`;
+
  h+='<div style="display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden">';
  others.forEach((b,i)=>{
-  const k=boothKey(b), got=BOOTH[k], busy=boothBusy===k;
-  h+=`<div style="background:var(--p1);padding:10px 12px;display:flex;gap:10px;align-items:flex-start">
-    <div style="flex:1;min-width:0">
-      <b style="font-size:9.5px;letter-spacing:.14em;color:var(--gold)">${esc2(b.who)}</b>
-      <div style="font-size:12.5px;margin-top:3px">${esc2(b.text)}</div>
-      ${got?`<small style="color:var(--go)">recorded${got.dur?' · '+got.dur.toFixed(1)+'s':''}</small>`:''}
-    </div>
-    <div style="display:flex;gap:6px;flex:0 0 auto">
-      ${got?`<button class="mini" onclick="boothPlay('${k}')">&#9654;</button>`:''}
-      <button class="mini ${busy?'':'ghost'}" onclick="boothToggle('${k}',${i})">${busy?'&#9632; STOP':(got?'REDO':'&#9679; REC')}</button>
-    </div></div>`;
+  const k=boothKey(b), arr=TAKESBY[k]||[], sel=picked(k), busy=boothBusy===k;
+  h+=`<div style="background:var(--p1);padding:11px 13px">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <b style="font-size:9.5px;letter-spacing:.14em;color:var(--gold)">${esc2(b.who)}</b>
+        <div style="font-size:12.5px;margin-top:3px">${esc2(b.text)}</div>
+      </div>
+      <button class="mini ${busy?'':'ghost'}" style="${busy?'border-color:#d9694e;color:#d9694e':''}"
+        onclick="boothToggle('${k}',${i})">${busy?'&#9632; STOP':(arr.length?'ANOTHER':'&#9679; REC')}</button>
+    </div>`;
+  if(arr.length){
+   h+=`<div class="takepills">`;
+   arr.forEach((c,n)=>{
+    const on=sel&&sel.id===c.id;
+    h+=`<span class="tpill${on?' on':''}">
+      <button onclick="boothPlayId('${c.id}')" title="listen">&#9654;</button>
+      <button onclick="boothPick('${k}','${c.id}')">Take ${n+1}${c.dur?' &middot; '+c.dur.toFixed(1)+'s':''}</button>
+      <button onclick="boothDrop('${k}','${c.id}')" title="delete">&times;</button></span>`;
+   });
+   h+=`</div>`;
+  }
+  h+='</div>';
  });
  h+='</div>';
  $('boothList').innerHTML=h;
 }
+function boothReady(){ SIDES.ready=true; saveRange(); boothRefresh(); }
+function boothUnready(){ SIDES.ready=false; saveRange(); boothRefresh(); }
+function boothPick(k,id){ SIDES.pick=SIDES.pick||{}; SIDES.pick[k]=id; saveRange(); boothRefresh(); }
+async function boothPlayId(id){
+ const all=await ActorReader.all(); const c=all.find(x=>x.id===id);
+ if(c)ActorReader.play(c.blob);
+}
+async function boothDrop(k,id){
+ await ActorReader.del(id);
+ if(SIDES.pick&&SIDES.pick[k]===id)delete SIDES.pick[k];
+ saveRange(); boothRefresh();
+}
+/* Play every chosen take back to back - the whole other side of the scene. */
+async function boothStitch(){
+ const om=SIDES.omit||[];
+ const others=activeScript().filter(b=>!b.mine && om.indexOf(b.who)<0);
+ const all=await ActorReader.all();
+ const seq=[];
+ others.forEach(b=>{
+  const k=boothKey(b), arr=all.filter(c=>c.line===k).sort((a,b2)=>a.at-b2.at);
+  const sel=(SIDES.pick&&SIDES.pick[k]) ? arr.find(c=>c.id===SIDES.pick[k]) : arr[arr.length-1];
+  if(sel)seq.push(sel);
+ });
+ if(!seq.length)return;
+ let i=0;
+ const next=()=>{ if(i>=seq.length)return; ActorReader.play(seq[i++].blob,next); };
+ next();
+}
+
 async function boothToggle(k,i){
  if(boothBusy===k){
   const blob=await ActorReader.stop();
   const dur=blob?await ActorReader.duration(blob):0;
-  if(blob&&blob.size) await ActorReader.put(k,blob,{dur:dur});
+  if(blob&&blob.size) await ActorReader.putTakeFor(k,blob,{dur:dur});
   boothBusy=null; await boothRefresh();
   if(boothSeq) boothNext();
   return;
@@ -835,16 +907,17 @@ async function boothToggle(k,i){
  try{ await ActorReader.start(); boothBusy=k; await boothRefresh(); }
  catch(e){ alert('Microphone unavailable: '+e.message); }
 }
-async function boothPlay(k){ const c=BOOTH[k]; if(c) ActorReader.play(c.blob); }
 async function boothRunAll(){
- boothQueue=SIDES.script.filter(b=>!b.mine).map(b=>boothKey(b));
+ const om=SIDES.omit||[];
+ boothQueue=activeScript().filter(b=>!b.mine && om.indexOf(b.who)<0).map(b=>boothKey(b));
  boothSeq=true; boothNext();
 }
 function boothNext(){
  const k=boothQueue.shift();
- if(!k){ boothSeq=false; ActorReader.disarm(); toast&&toast('Reader booth complete'); return; }
+ if(!k){ boothSeq=false; ActorReader.disarm(); try{toast('Reader booth complete')}catch(e){} return; }
  boothToggle(k);
 }
+
 async function boothClear(){
  if(!confirm('Delete every recorded reader line?'))return;
  const all=await ActorReader.all();
@@ -995,7 +1068,9 @@ function stageStep(d){ sIdx=Math.max(0,Math.min((SIDES.run||SIDES.script).length
  if(MODE==='PARTNER'&&!(SIDES.run||SIDES.script)[sIdx].mine) speakPartner(); }
 function speakPartner(){
  const b=(SIDES.run||SIDES.script)[sIdx]; if(!b||b.mine)return;
- const k=boothKey(b), c=BOOTH[k];
+ const k=boothKey(b);
+ const arr=(TAKESBY[k]||[]);
+ const c=(SIDES.pick&&SIDES.pick[k]?arr.find(x=>x.id===SIDES.pick[k]):null)||arr[arr.length-1]||BOOTH[k];
  if(!c){
   // no recording for this line - say so rather than substituting a robot
   $('sText').innerHTML=`<div class="sWho">${esc2(b.who)}</div>
