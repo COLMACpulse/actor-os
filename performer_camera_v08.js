@@ -11,8 +11,11 @@ const P={
  async open(video,canvas){
   this.stop(); this.video=video; this.canvas=canvas; this.ctx=canvas.getContext('2d',{willReadFrequently:true});
   const s=this.formatSpec(this.format);
+  // the slate move crops in, so it needs pixels to spend - ask for the largest
+  // frame the device will give when it is enabled
+  const wantW=this.wantMax?3840:s.w, wantH=this.wantMax?2160:s.h;
   this.stream=await navigator.mediaDevices.getUserMedia({
-   video:{facingMode:{ideal:this.facing},width:{ideal:s.w},height:{ideal:s.h},frameRate:{ideal:s.fps}},
+   video:{facingMode:{ideal:this.facing},width:{ideal:wantW},height:{ideal:wantH},frameRate:{ideal:s.fps}},
    audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
   });
   video.srcObject=this.stream; await video.play().catch(()=>{});

@@ -156,6 +156,22 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 <div class="am" style="margin-top:10px">Files come out named the way Actors Access names them &mdash; <b id="fnPreview">NAME_Role_Tk1.mp4</b></div>
 </div></div>
 
+<div class="section"><h3>Slate move <span style="color:var(--faint);font-weight:400;font-size:10px;letter-spacing:.1em">OPTIONAL &middot; OFF</span></h3><div class="inside">
+<div class="am" style="margin:0 0 11px">Shoot one static full-body slate. This punches in from head-and-shoulders to full body, <b>holds</b>, then settles closer &mdash; so you get both frames without the floor space for a wide shot.
+<br><br>Every pixel comes from your frame. Nothing is generated, nothing is enlarged. If the move would need to enlarge the picture it is refused rather than softened.
+<br><br><b>Casting offices disagree on this.</b> Some coaches teach it; at least one casting director asks for no pan at all. The hold at full body is there for that reason. Check the instructions on your breakdown.</div>
+<label class="cbrow"><input type="checkbox" id="slateMoveOn"><span>Offer this on full-body slate takes</span></label>
+<div class="am" style="margin-top:10px"><b>Focus and sharpness.</b> Cropping cannot change focus &mdash; whatever the lens did during the slate is baked in, and the punch-in magnifies it. <b>Lock focus and exposure before you shoot the slate.</b>
+<br><br>A tighter crop is also fewer pixels. From a 1080p slate the closest frame is a 2.4&times; upscale and reads soft, so the app <b>refuses</b> rather than shipping a mushy tape. Shoot the slate at the largest size your phone offers.</div>
+<div id="slateMoveUI" style="display:none;margin-top:11px">
+ <div class="row" style="gap:8px;flex-wrap:wrap">
+  <button class="ghost" onclick="previewSlateMove()">PREVIEW ON A TAKE</button>
+  <button class="ghost" onclick="checkSlateQuality()">CHECK MY LAST SLATE</button>
+ </div>
+ <div id="slateMoveOut" style="margin-top:10px"></div>
+</div>
+</div></div>
+
 <div class="section"><h3>Slate card</h3><div class="inside">
 <div class="am" style="margin:0 0 11px">A card to hold in frame before the scene, or to shoot as your slate file.
 <b>Casting offices ask for no labels on the scene itself</b> &mdash; before it is fine, on it is not. Nothing is ever burned into your take.</div>
@@ -252,6 +268,8 @@ if($('startCam'))$('startCam').onclick=async()=>{
   if(window.ActorOSPerformerCamera){
    PC=window.ActorOSPerformerCamera;
    PC.format = ($('captureFormat')&&$('captureFormat').value) || 'CASTING';
+   // the slate move spends resolution, so ask for the largest frame available
+   PC.wantMax = slateMoveEnabled();
    applyFrame(PC.format);
    PC.facing = camFacing;
    let cvs=document.getElementById('pcSample');
@@ -334,6 +352,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 <script src="pdf.js"></script>
 <script src="reader.js"></script>
 <script src="qr.js"></script>
+<script src="slatemove.js"></script>
 <script>
 /* ===================== SIDES + STAGE ===================== */
 let SIDES={beats:[],speakers:[],me:'',script:[],startIx:-1,endIx:-1,omit:[]};
@@ -690,6 +709,85 @@ function playTake(id){
  w.addEventListener('click',e=>{if(e.target===w)closeReview();});
  document.body.appendChild(w);
 }
+
+
+/* ===== SLATE MOVE UI =====
+   Off by default and it stays off until it has been proven on a real slate. */
+function slateMoveEnabled(){ const c=$('slateMoveOn'); return !!(c&&c.checked); }
+function toggleSlateMoveUI(){
+ const ui=$('slateMoveUI'); if(!ui||!ui.style)return;
+ ui.style.display=slateMoveEnabled()?'block':'none';
+ try{ localStorage.setItem('actor_os_slatemove', slateMoveEnabled()?'1':'0'); }catch(e){}
+}
+
+/* Report the sharpness cost against a real take, before anything is built. */
+async function checkSlateQuality(){
+ const out=$('slateMoveOut'); if(!out)return;
+ const takes=(state.takes||[]).filter(t=>t.status!=='DROP');
+ if(!takes.length){ out.innerHTML='<div class="am" style="margin:0">Shoot a full-body slate first.</div>'; return; }
+ const t=takes[takes.length-1];
+ try{
+  const blob=await ActorReader.getTake(t.id);
+  if(!blob) throw new Error('that take is no longer in storage');
+  const v=document.createElement('video'); v.src=URL.createObjectURL(blob); v.muted=true;
+  await new Promise((res,rej)=>{v.onloadedmetadata=res;v.onerror=()=>rej(new Error('cannot read that take'));});
+  const q=ActorSlateMove.quality(v.videoWidth,v.videoHeight,1920,1080);
+  const col=q.native?'#5cae7e':(q.acceptable?'#E0A23C':'#d9694e');
+  out.innerHTML=`<div class="am" style="margin:0;border-color:${col}">
+    <b>Take ${t.n} is ${v.videoWidth}&times;${v.videoHeight}.</b><br>
+    Tightest frame crops to ${q.tightestCrop}, a <b>${q.upscale}&times;</b> upscale.<br>
+    <span style="color:${col}">${q.advice}</span></div>`;
+  URL.revokeObjectURL(v.src);
+ }catch(e){ out.innerHTML='<div class="am" style="border-color:#d9694e;margin:0">'+esc2(e.message)+'</div>'; }
+}
+
+async function previewSlateMove(){
+ const out=$('slateMoveOut'); if(!out)return;
+ const takes=(state.takes||[]).filter(t=>t.status!=='DROP');
+ if(!takes.length){ out.innerHTML='<div class="am" style="margin:0">Shoot a full-body slate first, then come back.</div>'; return; }
+ const t=takes[takes.length-1];
+ out.innerHTML='<div class="am" style="margin:0">Building from Take '+t.n+'&hellip;</div>';
+ try{
+  const blob=await ActorReader.getTake(t.id);
+  if(!blob) throw new Error('that take is no longer in storage');
+  const v=document.createElement('video');
+  v.src=URL.createObjectURL(blob); v.muted=true; v.playsInline=true;
+  await new Promise((res,rej)=>{ v.onloadedmetadata=res; v.onerror=()=>rej(new Error('cannot read that take')); });
+  const moved=await ActorSlateMove.render(v,{outW:1920,outH:1080,fps:30,
+    onProgress:u=>{ out.innerHTML='<div class="am" style="margin:0">Building&hellip; '+Math.round(u*100)+'%</div>'; }});
+  const url=URL.createObjectURL(moved);
+  out.innerHTML=`<video src="${url}" controls playsinline style="width:100%;border-radius:10px;background:#000"></video>
+   <div class="row" style="gap:8px;margin-top:9px;flex-wrap:wrap">
+     <button onclick="saveSlateMove()">&#8681; SAVE THIS TO PHONE</button>
+     <button class="ghost" onclick="previewSlateMove()">REBUILD</button></div>
+   <div class="am" style="margin-top:9px">${(moved.size/1048576).toFixed(1)} MB &middot; built from Take ${t.n}. Your original take is untouched.</div>`;
+  window.__slateMoved={blob:moved,take:t};
+ }catch(e){
+  out.innerHTML='<div class="am" style="border-color:#d9694e;margin:0"><b>Could not build the move.</b><br>'+esc2(e.message)+'</div>';
+ }
+}
+function saveSlateMove(){
+ const m=window.__slateMoved; if(!m)return;
+ const name=takeFilename(Object.assign({},m.take,{isSlate:true,type:m.blob.type}));
+ const f=(typeof File!=='undefined')?new File([m.blob],name,{type:m.blob.type||'video/mp4'}):null;
+ if(f && navigator.canShare && navigator.canShare({files:[f]}) && navigator.share){
+  navigator.share({files:[f],title:name}).catch(()=>{});
+  return;
+ }
+ const a=document.createElement('a'); a.href=URL.createObjectURL(m.blob); a.download=name;
+ document.body.appendChild(a); a.click();
+ setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1200);
+}
+window.addEventListener('load',()=>{
+ setTimeout(()=>{
+  const c=$('slateMoveOn');
+  if(c&&c.addEventListener){
+   if(localStorage.getItem('actor_os_slatemove')==='1')c.checked=true;
+   c.addEventListener('change',toggleSlateMoveUI);
+   toggleSlateMoveUI();
+  }
+ },500);
+});
 
 /* ===== READER BOOTH UI ===== */
 let BOOTH={}, boothBusy=null, boothQueue=[], boothSeq=false;

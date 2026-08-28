@@ -139,6 +139,36 @@ against that file &mdash; set them once and they persist.
 It matters more than it sounds. On a real four-page side, marking the range took
 the reader booth from **23 lines to record down to 10**.
 
+## Slate move &mdash; optional, off by default
+
+Casting wants a full body slate for physicality and a closer frame for the read.
+Most home setups do not have the floor space to shoot wide, so coaches teach a
+manual punch-in and record tutorial videos explaining it. No self-tape app
+automates it.
+
+Shoot **one static full-body slate**. The app punches in from head-and-shoulders
+to full body, **holds**, then settles closer.
+
+**Nothing is generated** &mdash; every output pixel is crop and scale over your own
+frame. But nothing generated is not the same as nothing softened. A crop is fewer
+pixels, and stretching them to the output size is an upscale:
+
+    1080p slate, tightest crop -> 806x454 to 1920x1080 = 2.38x. Soft.
+    4K    slate, tightest crop -> 1612x907 to 1920x1080 = 1.19x. Fine.
+
+So the app measures the real cost, **refuses** above 1.35x rather than shipping a
+mushy tape, and asks the camera for the largest frame available when the move is
+enabled.
+
+**On focus:** cropping cannot change focus. Whatever the lens did during the static
+slate is baked in, and the punch-in magnifies it. Lock focus and exposure before
+you shoot the slate &mdash; nothing downstream can fix a hunt.
+
+**The hold is not decoration.** A casting director on full-body slates: *no
+pan-and-scan, because it does not give us an overall view of your full body.* The
+hold is that overall view. Offices disagree on whether to move at all, which is
+why this is **off by default** and why the breakdown always wins.
+
 ## Slate card, not a watermark
 
 Casting instructions routinely read: *do not edit video with cross-fades or labels
