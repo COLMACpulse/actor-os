@@ -167,6 +167,17 @@ nav button:hover b{color:var(--bone)}
  nav button{padding:12px 2px 10px;min-height:60px}
  nav button b{font-size:10px;letter-spacing:.09em}
 }
+
+.prevwrap{position:relative;width:100%;aspect-ratio:var(--capAR,16/9);background:#000;
+ border:1px solid var(--line2);border-radius:12px;overflow:hidden;max-height:56vh;margin:0 auto}
+.prevwrap video{width:100%;height:100%;object-fit:cover;display:block}
+.prevoff{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:11px;background:#0d0f12}
+.prevoff span{font-size:11.5px;color:var(--faint);letter-spacing:.04em}
+.prevbar{position:absolute;left:10px;right:10px;bottom:10px;border-radius:8px;padding:9px 12px;
+ font:500 11.5px/1.45 var(--mono,ui-monospace);display:none}
+.prevbar.on{display:block;background:rgba(217,105,78,.94);color:#fff}
+.prevbar.on.check{background:rgba(224,162,60,.94);color:#12100c}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
 <nav>
@@ -203,10 +214,7 @@ nav button:hover b{color:var(--bone)}
 <div id="urlWrap" style="display:none;margin-top:9px">
  <input id="actorURL" placeholder="https://brendanmccarthyactor.com" oninput="localStorage.setItem('actor_os_url',this.value)">
 </div>
-<div class="am" style="margin-top:10px">Files come out named the way Actors Access names them &mdash; <b id="fnPreview">NAME_Role_Tk1.mp4</b></div>
-</div>
-<div class="row" style="margin-top:11px"><button class="ghost mini" onclick="showMore()">More options</button></div>
-<div></div></div>
+</div></div>
 
 <div class="section" id="boothWrap" style="display:none"><h3>Reader booth</h3><div class="inside">
 <div class="am" style="margin:0 0 11px">Record every line that is not yours. Your voice, your pace &mdash; the take plays these back so you have something real to work off.</div>
@@ -259,26 +267,35 @@ nav button:hover b{color:var(--bone)}
 </div>
 <section id="shoot" class="panel">
 <div id="modePick">
-  <div class="am">How are you shooting this?</div>
+  <div class="prevwrap">
+    <video id="prevVid" autoplay muted playsinline></video>
+    <div class="prevoff" id="prevOff">
+      <button class="act" onclick="startPreview()">TURN ON CAMERA</button>
+      <span>see yourself before you choose</span>
+    </div>
+    <div class="prevbar" id="prevBar"></div>
+  </div>
+  <div class="row" style="gap:8px;flex-wrap:wrap;margin:11px 0 4px">
+    <select id="captureFormat" style="flex:1;min-width:180px" onchange="applyFrame(this.value);previewFormat()">
+      <option value="CASTING">CASTING &middot; 16:9 landscape</option>
+      <option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
+    <button class="ghost" onclick="previewFlip()">FLIP</button>
+    <button class="ghost" id="remoteBtn" onclick="remoteEnable()">REMOTE</button>
+  </div>
+  <div id="remoteState"></div>
+
+  <div class="am" style="margin-top:14px">How are you working this one?</div>
   <div class="modes">
     <button class="mode" onclick="startMode('READER')">
-      <b>With a reader</b><span>Someone is off camera reading with you. Nothing on screen but the frame.</span></button>
+      <b>Solo, or with a reader</b><span>Nothing on screen but the frame. Someone off camera reads with you, or you go it alone.</span></button>
     <button class="mode" onclick="startMode('PARTNER')">
-      <b>Scene partner</b><span>The app plays back the lines you recorded and waits for you.</span></button>
+      <b>Scene partner</b><span>Plays back the lines you recorded and waits for you. Your lines are never shown.</span></button>
     <button class="mode" onclick="startMode('PROMPTER')">
       <b>Teleprompter</b><span>Your lines on screen, at whatever level you want to see them.</span></button>
   </div>
   <div id="modeWarn" class="am" style="border-color:#d9694e;color:#e8dcd8;display:none">
     Scene partner and teleprompter need sides. Upload them in PREP first.</div>
-  <div class="section"><h3>Format</h3><div class="inside">
-    <select id="captureFormat" onchange="applyFrame(this.value);if(window.PC){PC.format=this.value;}"><option value="CASTING">CASTING &middot; 16:9 landscape</option><option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
-    <div class="row" style="margin-top:9px;gap:8px;flex-wrap:wrap">
-      <button class="ghost" onclick="checkBackground()">CHECK MY BACKGROUND</button>
-      <button class="ghost" id="remoteBtn" onclick="remoteEnable()">USE A REMOTE</button></div>
-    <div id="remoteState"></div>
-    <div id="bgOut" style="margin-top:10px"></div>
-    <div class="hidden"><b id="lightVal">&mdash;</b><b id="rmsVal">&mdash;</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet">nothing needs your attention</div><div id="takeList"></div></div>
-  </div></div>
+  <div class="hidden"><b id="lightVal">&mdash;</b><b id="rmsVal">&mdash;</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet"></div><div id="takeList"></div><div id="bgOut"></div></div>
 </div>
 </section>
 <section id="cut" class="panel"><div class="am">Actor Cut Room rules: DROP / HOLD / SURVIVOR. One survivor per scene. The software does not score acting.</div><div id="unsavedBar" class="unsaved"></div>
@@ -1032,6 +1049,58 @@ function namePreview(){
  if(el&&el.textContent!==undefined) el.textContent=takeFilename({n:1,type:'video/mp4'});
 }
 
+
+/* The preview runs before you commit to a mode. You look at the frame, fix the
+   room, then choose how you are working. It hands its stream to the stage rather
+   than opening the camera twice. */
+async function startPreview(){
+ try{
+  const PCa=window.ActorOSPerformerCamera;
+  if(!PCa) throw new Error('camera module not loaded');
+  PCa.format=$('captureFormat').value;
+  PCa.facing=(window.camFacing||'user');
+  let c=document.getElementById('pcSample');
+  if(!c){c=document.createElement('canvas');c.id='pcSample';c.width=160;c.height=90;c.style.display='none';document.body.appendChild(c);}
+  await PCa.open($('prevVid'), c);
+  window.PC=PCa;
+  const off=$('prevOff'); if(off&&off.style)off.style.display='none';
+  previewFormat(); previewCoach();
+ }catch(e){ alert('Camera unavailable: '+e.message); }
+}
+function previewFormat(){
+ const f=$('captureFormat').value;
+ document.documentElement.style.setProperty('--capAR', f==='SOCIAL'?'9/16':'16/9');
+ if(window.PC){ PC.format=f; }
+}
+async function previewFlip(){
+ window.camFacing=(window.camFacing==='environment')?'user':'environment';
+ if(window.PC&&PC.stream){ try{PC.stop();}catch(e){} }
+ await startPreview();
+}
+let prevCoachT=null;
+function previewCoach(){
+ const bar=$('prevBar'); if(!bar||!bar.classList)return;
+ const tick=()=>{
+  try{
+   const f=window.PC&&PC.frameMetrics&&PC.frameMetrics();
+   const all=(window.PC&&PC.notes&&PC.notes(f))||[];
+   const bgn=(window.PC&&PC.backgroundNotes)?PC.backgroundNotes(PC.backgroundCheck()):[];
+   const n=all.concat(bgn).filter(x=>x[0]==='FIX'||x[0]==='CHECK');
+   if(!n.length){ bar.className='prevbar'; bar.textContent=''; }
+   else { const pick=n.find(x=>x[0]==='FIX')||n[0];
+     bar.className='prevbar on'+(pick[0]==='CHECK'?' check':'');
+     bar.textContent=pick[1]; }
+  }catch(e){}
+  prevCoachT=setTimeout(tick,1400);
+ };
+ tick();
+}
+function stopPreview(){
+ if(prevCoachT){clearTimeout(prevCoachT);prevCoachT=null;}
+ const v=$('prevVid');
+ if(v&&v.srcObject){ v.srcObject=null; }
+}
+
 /* ===== READER BOOTH UI ===== */
 let BOOTH={}, TAKESBY={}, boothBusy=null, boothQueue=[], boothSeq=false;
 function boothKey(b){ return ActorReader.keyFor(SIDES.file||'sides', b.who, b.text); }
@@ -1242,7 +1311,7 @@ let MODE=null, sIdx=0, sRecOn=false, sRecorder=null, sChunks=[], sT0=0, sTimer=n
 function startMode(m){
  if((m==='PARTNER'||m==='PROMPTER') && !activeScript().length){
   $('modeWarn').style.display='block'; return; }
- MODE=m; sIdx=0;
+ MODE=m; sIdx=0; stopPreview();
  if(MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); }
  if(sIdx<0)sIdx=0;
  openStage();
