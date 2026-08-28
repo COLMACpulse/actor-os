@@ -7,6 +7,18 @@ have. No account, no server, no upload. Runs offline once installed.
 
 ---
 
+## Bluetooth remote
+
+Clickers do not speak one language. Cheap ones present as a keyboard and send
+Space, Enter, Page Up/Down or an arrow. Camera remotes send volume keys. Some send
+media transport keys.
+
+All three routes are listened for, so whatever you own probably works. Turn it on
+in SHOOT, then press your clicker to start and stop &mdash; you never touch the phone.
+
+Repeat presses inside 450ms are ignored, because clickers bounce. Typing in a
+field never triggers it. Off the stage it is inert.
+
 ## The five stages
 
     01 PREP   02 SHOOT   03 CUT   04 SAVE   05 SEND
@@ -25,7 +37,8 @@ across the top &mdash; the same signal a camera gives when it is the one that is
 | **SHOOT** | Press record and you get **3 &middot; 2 &middot; 1 &middot; ACTION** to get set. Nothing is captured during the count. Tap to cancel. |
 | **SHOOT (cont)** | One question: *how are you shooting this?* Then the screen goes full and shows only what that answer needs. |
 | **SAVE** | Get the performance onto the phone before anything else. Every take is marked saved or browser-only. |
-| **CUT** | Takes marked DROP / HOLD / SURVIVOR. Non-destructive trim against an untouched master. Video is held in IndexedDB, so takes survive a reload. |
+| **CUT** | Pick the take, set the handles, choose a size. Real re-encode &mdash; trim and compress in one step, no second app. |
+| **CUT (old)** | Takes marked DROP / HOLD / SURVIVOR. Non-destructive trim against an untouched master. Video is held in IndexedDB, so takes survive a reload. |
 | **SEND** | One package with a slate, the survivor take, and a delivery receipt |
 
 ### Three ways to shoot, and you only ever see one
@@ -66,6 +79,18 @@ A near-miss like *"I ain't your brothers okay"* against *"I ain't your brother"*
 scores 0.76 and **holds**. It would rather stall than advance on a mis-hear.
 
 ---
+
+## Bluetooth remote
+
+Clickers do not speak one language. Cheap ones present as a keyboard and send
+Space, Enter, Page Up/Down or an arrow. Camera remotes send volume keys. Some send
+media transport keys.
+
+All three routes are listened for, so whatever you own probably works. Turn it on
+in SHOOT, then press your clicker to start and stop &mdash; you never touch the phone.
+
+Repeat presses inside 450ms are ignored, because clickers bounce. Typing in a
+field never triggers it. Off the stage it is inert.
 
 ## The five stages
 
@@ -199,18 +224,6 @@ you shoot the slate &mdash; nothing downstream can fix a hunt.
 pan-and-scan, because it does not give us an overall view of your full body.* The
 hold is that overall view. Offices disagree on whether to move at all, which is
 why this is **off by default** and why the breakdown always wins.
-
-## Slate card, not a watermark
-
-Casting instructions routinely read: *do not edit video with cross-fades or labels
-on the actual scene (labels before the scene are fine)*.
-
-So **nothing is ever composited onto a take.** Instead the app draws a slate card —
-your name, the role, the project, and an optional QR to your page. Hold it in
-frame before the scene, or save it as an image and shoot it as your slate file.
-
-The QR is generated in-app with no library, and it is a real, scannable symbol —
-verified byte-identical to a reference encoder and decoded back to the URL.
 
 ## File naming
 

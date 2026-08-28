@@ -206,7 +206,7 @@ nav button:hover b{color:var(--bone)}
  <div><label>Name as casting sees it</label>
   <input id="actorName" placeholder="BRENDAN McCARTHY" oninput="localStorage.setItem('actor_os_name',this.value)"></div>
  <div><label>Your page &mdash; optional, for the slate QR</label>
-  <input id="actorURL" placeholder="https://brendanmccarthyactor.com" oninput="localStorage.setItem('actor_os_url',this.value);drawSlate()"></div>
+  <input id="actorURL" placeholder="https://brendanmccarthyactor.com" oninput="localStorage.setItem('actor_os_url',this.value)"></div>
 </div>
 <div class="am" style="margin-top:10px">Files come out named the way Actors Access names them &mdash; <b id="fnPreview">NAME_Role_Tk1.mp4</b></div>
 </div></div>
@@ -227,16 +227,6 @@ nav button:hover b{color:var(--bone)}
 </div>
 </div></div>
 
-<div class="section"><h3>Slate card</h3><div class="inside">
-<div class="am" style="margin:0 0 11px">A card to hold in frame before the scene, or to shoot as your slate file.
-<b>Casting offices ask for no labels on the scene itself</b> &mdash; before it is fine, on it is not. Nothing is ever burned into your take.</div>
-<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
- <button class="ghost" onclick="toggleSlate()">SHOW / HIDE</button>
- <button class="ghost" onclick="downloadSlate()">SAVE AS IMAGE</button>
-</div>
-<div id="slateWrap" style="display:none"><canvas id="slateCanvas" style="width:100%;max-width:520px;border-radius:10px;border:1px solid var(--line2)"></canvas></div>
-</div></div>
-
 <div class="section" id="advWrap"><h3><button class="ghost mini" onclick="toggleAdv()" style="border:0;padding:0;color:var(--gold)">&#9656; Job details, instructions, research</button></h3>
 <div class="inside" id="advBody" style="display:none"><div class="grid2"><div><label>Project</label><input id="project" value="Untitled Performance"><label>Role / piece</label><input id="role" placeholder="Role, scene, song, set..."></div><div><label>Instructions</label><textarea id="instructions" placeholder="Slate, framing, naming, office notes..."></textarea><label>Research notes</label><textarea id="research" placeholder="Project, director, casting, context..."></textarea></div></div>
 <div class="grid2" style="margin-top:10px"><div><label>Expected reader cue</label><input id="cue" value=""><label>Your line</label><textarea id="actorLine"></textarea></div><div><label>Display</label><select id="displayMode"><option>FULL_LINE</option><option selected>FIRST_PHRASE</option><option>FIRST_WORD</option><option>INITIALS</option><option>CUE_ONLY</option><option>OFF</option></select><label>Advance</label><select id="advanceMode"><option>CUE_AWARE</option><option>MANUAL</option></select><label>Recognized cue test</label><input id="heard" value=""><button class="mini" onclick="testCue()">TEST CUE</button></div></div>
@@ -251,6 +241,7 @@ nav button:hover b{color:var(--bone)}
     <button class="sBtn" onclick="exitStage()">&times; DONE</button>
     <span class="sTC" id="sTC">00:00</span>
     <button class="sBtn" onclick="stageBg()">BG</button>
+    <span class="sBtn" id="stageRemote" style="display:none;pointer-events:none">&#9679; REMOTE</span>
     <button class="sBtn" onclick="stageFlip()">FLIP</button>
   </div>
   <div class="sCoach" id="sCoach"></div>
@@ -275,14 +266,20 @@ nav button:hover b{color:var(--bone)}
     Scene partner and teleprompter need sides. Upload them in PREP first.</div>
   <div class="section"><h3>Format</h3><div class="inside">
     <select id="captureFormat" onchange="applyFrame(this.value);if(window.PC){PC.format=this.value;}"><option value="CASTING">CASTING &middot; 16:9 landscape</option><option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
-    <div class="row" style="margin-top:9px"><button class="ghost" onclick="checkBackground()">CHECK MY BACKGROUND</button></div>
+    <div class="row" style="margin-top:9px;gap:8px;flex-wrap:wrap">
+      <button class="ghost" onclick="checkBackground()">CHECK MY BACKGROUND</button>
+      <button class="ghost" id="remoteBtn" onclick="remoteEnable()">USE A REMOTE</button></div>
+    <div id="remoteState"></div>
     <div id="bgOut" style="margin-top:10px"></div>
     <div class="hidden"><b id="lightVal">&mdash;</b><b id="rmsVal">&mdash;</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet">nothing needs your attention</div><div id="takeList"></div></div>
   </div></div>
 </div>
 </section>
 <section id="cut" class="panel"><div class="am">Actor Cut Room rules: DROP / HOLD / SURVIVOR. One survivor per scene. The software does not score acting.</div><div id="unsavedBar" class="unsaved"></div>
-<div class="section"><h3>Takes</h3><div class="inside" id="cutTakes"></div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="grid2"><div><label>Trim in (sec)</label><input id="trimIn" type="number" step=".1" value="0"></div><div><label>Trim out (sec)</label><input id="trimOut" type="number" step=".1" value="0"></div></div><div class="row"><button onclick="applyTrim()">APPLY TO SURVIVOR</button><button onclick="addSlate()">+ SLATE</button></div></div></div></section>
+<div class="section"><h3>Takes</h3><div class="inside" id="cutTakes"></div></div>
+<div class="section"><h3>Trim and compress</h3><div class="inside">
+  <div id="cutWork"></div>
+</div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="grid2"><div><label>Trim in (sec)</label><input id="trimIn" type="number" step=".1" value="0"></div><div><label>Trim out (sec)</label><input id="trimOut" type="number" step=".1" value="0"></div></div><div class="row"><button onclick="applyTrim()">APPLY TO SURVIVOR</button><button onclick="addSlate()">+ SLATE</button></div></div></div></section>
 <section id="save" class="panel">
 <div class="am">Get the performance onto this phone. Browser storage is a cache &mdash; it can be cleared without warning. A take that only lives in here is not saved.</div>
 <div class="section"><h3>Takes</h3><div class="inside">
@@ -305,7 +302,7 @@ const _NULLEL={textContent:'',innerHTML:'',value:'',style:{},classList:{add(){},
 const $=id=>document.getElementById(id)||_NULLEL; const save=()=>{state.job={project:$('project').value,role:$('role').value,due:$('due').value,instructions:$('instructions').value,research:$('research').value};localStorage.setItem(KEY,JSON.stringify(state));$('saveState').textContent='LOCAL STATE · SAVED';renderJob();};
 ['project','role','due','instructions','research','cue','actorLine','displayMode','advanceMode','anchor','action','forbidden','posture','reader'].forEach(id=>$(id)?.addEventListener('input',()=>{save();renderPrompt()}));
 function renderJob(){$('jobTitle').textContent=$('project').value||'Untitled Performance';$('jobMeta').textContent=((state.job.role||'PERFORMANCE').toUpperCase())+' · Scene '+state.scene;$('project').focus()}
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on');navState();if(b.dataset.tab==='cut')renderCut();if(b.dataset.tab==='save')renderSave();if(b.dataset.tab==='send')renderSend();});
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on');navState();if(b.dataset.tab==='cut'){renderCut();renderCutWork();}if(b.dataset.tab==='save')renderSave();if(b.dataset.tab==='send')renderSend();});
 function toks(s){return (s||'').toLowerCase().replace(/[^a-z0-9' ]/g,' ').split(/\s+/).filter(Boolean)}
 function lev(a,b){let d=Array.from({length:a.length+1},(_,i)=>Array(b.length+1).fill(0));for(let i=0;i<=a.length;i++)d[i][0]=i;for(let j=0;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
 function lcs(a,b){let d=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=a[i-1]===b[j-1]?d[i-1][j-1]+1:Math.max(d[i-1][j],d[i][j-1]);return d[a.length][b.length]}
@@ -407,8 +404,8 @@ window.addEventListener('DOMContentLoaded',()=>{
 <script src="sides.js"></script>
 <script src="pdf.js"></script>
 <script src="reader.js"></script>
-<script src="qr.js"></script>
 <script src="slatemove.js"></script>
+<script src="compress.js"></script>
 <script>
 /* ===================== SIDES + STAGE ===================== */
 let SIDES={beats:[],speakers:[],me:'',script:[],startIx:-1,endIx:-1,omit:[],ready:false,pick:{}};
@@ -615,76 +612,16 @@ window.addEventListener('load',()=>{ setTimeout(rehydrateTakes,300); });
    scene (labels before the scene are fine!)". So nothing is ever composited onto
    a take. This is a card - hold it in frame before you start, or shoot it as the
    slate file that goes alongside. */
-function slateData(){
- return { name:actorName()||'YOUR NAME',
-          role:titleCase(SIDES.me||($('role')&&$('role').value)||''),
-          project:($('project')&&$('project').value)||'',
-          url:(($('actorURL')&&$('actorURL').value)||localStorage.getItem('actor_os_url')||'').trim() };
-}
-function drawSlate(){
- const c=$('slateCanvas'); if(!c||!c.getContext)return;
- const d=slateData(), W=1600, H=900;
- c.width=W; c.height=H;
- const x=c.getContext('2d');
- x.fillStyle='#0d0f12'; x.fillRect(0,0,W,H);
- x.fillStyle='#E0A23C'; x.fillRect(0,0,W,10);
- x.fillStyle='#ECE7DC';
- x.font='800 96px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif';
- x.fillText(d.name.toUpperCase(), 80, 230);
- if(d.role){ x.fillStyle='#E0A23C';
-  x.font='600 46px ui-monospace,Menlo,Consolas,monospace';
-  x.fillText(d.role.toUpperCase(), 82, 300); }
- if(d.project){ x.fillStyle='#9aa0a8';
-  x.font='400 34px ui-monospace,Menlo,Consolas,monospace';
-  x.fillText(d.project, 82, 360); }
- if(d.url){
-  try{
-   const m=ActorQR.make(d.url);
-   if(m){
-    const tmp=document.createElement('canvas');
-    ActorQR.draw(m,tmp,8,3);
-    const S=300;
-    x.drawImage(tmp, W-S-80, H-S-140, S, S);
-    x.fillStyle='#6b6f76';
-    x.font='400 24px ui-monospace,Menlo,Consolas,monospace';
-    x.textAlign='center';
-    x.fillText(d.url.replace(/^https?:\/\//,''), W-S/2-80, H-100);
-    x.textAlign='left';
-   }
-  }catch(e){}
- }
- x.fillStyle='#4a4f57';
- x.font='400 24px ui-monospace,Menlo,Consolas,monospace';
- x.fillText('SLATE', 82, H-90);
- const fn=$('fnPreview');
- if(fn&&fn.textContent!==undefined){
-  fn.textContent=takeFilename({n:1,type:'video/mp4'});
- }
-}
-function toggleSlate(){
- const w=$('slateWrap'); if(!w||!w.style)return;
- const on=w.style.display==='none';
- w.style.display=on?'block':'none';
- if(on)drawSlate();
-}
-function downloadSlate(){
- drawSlate();
- const c=$('slateCanvas'); if(!c||!c.toBlob)return;
- c.toBlob(b=>{
-  if(!b)return;
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(b);
-  a.download=(actorName()||'SLATE').replace(/\s+/g,'_')+'_Slate_Card.png';
-  document.body.appendChild(a); a.click();
-  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1200);
- },'image/png');
-}
+
+
+
+
 window.addEventListener('load',()=>{
  setTimeout(()=>{
   const n=localStorage.getItem('actor_os_name'), u=localStorage.getItem('actor_os_url');
   if(n&&$('actorName'))$('actorName').value=n;
   if(u&&$('actorURL'))$('actorURL').value=u;
-  drawSlate();
+  
  },400);
 });
 
@@ -893,6 +830,174 @@ function navState(){
  set('save', !takes.length?null:(saved.length===takes.length?'done':(saved.length?'started':null)));
  // SEND: a package built
  set('send', (st&&st.sent)?'done':null);
+}
+
+
+/* ===== CUT WORKBENCH =====
+   The step that replaces a separate compressor app. Pick the survivor, set the
+   handles, choose a size, and it re-encodes in place. */
+let CUTSEL=null, CUTIN=0, CUTOUT=0;
+function renderCutWork(){
+ const el=$('cutWork'); if(!el||el===_NULLEL)return;
+ const takes=(state.takes||[]).filter(t=>t.status!=='DROP');
+ if(!takes.length){ el.innerHTML='<div class="am" style="margin:0">Nothing shot yet.</div>'; return; }
+ const t=takes.find(x=>x.id===CUTSEL)||takes.find(x=>x.status==='SURVIVOR')||takes[takes.length-1];
+ CUTSEL=t.id;
+ let h=`<div class="row" style="gap:7px;flex-wrap:wrap;margin-bottom:11px">`;
+ takes.forEach(x=>{ h+=`<button class="mini ${x.id===CUTSEL?'':'ghost'}" onclick="cutPick('${x.id}')">
+   ${x.isSlate?'Slate':'Take '+x.n}${x.status==='SURVIVOR'?' &#9733;':''}</button>`; });
+ h+=`</div>`;
+ h+=`<video id="cutVid" src="${t.url||''}" controls playsinline style="width:100%;border-radius:10px;background:#000"></video>`;
+ h+=`<div class="grid2" style="margin-top:11px">
+   <div><label>Trim off the front (sec)</label>
+     <input id="cutIn" type="number" step="0.1" min="0" value="${CUTIN}" oninput="CUTIN=parseFloat(this.value)||0"></div>
+   <div><label>Trim off the end (sec)</label>
+     <input id="cutOut" type="number" step="0.1" min="0" value="${CUTOUT}" oninput="CUTOUT=parseFloat(this.value)||0"></div>
+ </div>
+ <div class="row" style="gap:7px;margin-top:6px;flex-wrap:wrap">
+   <button class="mini ghost" onclick="cutMark('in')">SET FRONT AT PLAYHEAD</button>
+   <button class="mini ghost" onclick="cutMark('out')">SET END AT PLAYHEAD</button>
+ </div>`;
+ h+=`<label style="margin-top:13px">Size</label><div class="modes" style="gap:8px;margin:0">`;
+ ActorCompress.PRESETS.forEach(pr=>{
+  const est=ActorCompress.estimate(Math.max(1,(t.secs||10)-CUTIN-CUTOUT),pr.mbps);
+  h+=`<button class="mode" onclick="cutRun('${pr.id}')" style="padding:13px 14px">
+    <b>${pr.label}</b><span>${pr.note}<br><span style="color:var(--gold)">about ${(est/1048576).toFixed(0)} MB</span></span></button>`;
+ });
+ h+=`</div><div id="cutOutBox" style="margin-top:11px"></div>`;
+ el.innerHTML=h;
+}
+function cutPick(id){ CUTSEL=id; CUTIN=0; CUTOUT=0; renderCutWork(); }
+function cutMark(which){
+ const v=$('cutVid'); if(!v||!v.duration)return;
+ if(which==='in'){ CUTIN=Math.round(v.currentTime*10)/10; }
+ else { CUTOUT=Math.round((v.duration-v.currentTime)*10)/10; }
+ renderCutWork();
+}
+async function cutRun(presetId){
+ const box=$('cutOutBox'); if(!box)return;
+ const t=(state.takes||[]).find(x=>x.id===CUTSEL); if(!t)return;
+ const pr=ActorCompress.PRESETS.find(p=>p.id===presetId);
+ box.innerHTML='<div class="am" style="margin:0">Encoding&hellip; this runs in real time, so it takes about as long as the take.</div>';
+ try{
+  const src=await ActorReader.getTake(t.id);
+  if(!src) throw new Error('that take is no longer in storage');
+  const r=await ActorCompress.process(src,{h:pr.h,mbps:pr.mbps,trimStart:CUTIN,trimEnd:CUTOUT,
+    onProgress:u=>{ box.innerHTML='<div class="am" style="margin:0">Encoding&hellip; '+Math.round(u*100)+'%</div>'; }});
+  window.__cutOut={r:r,take:t};
+  const url=URL.createObjectURL(r.blob);
+  box.innerHTML=`<video src="${url}" controls playsinline style="width:100%;border-radius:10px;background:#000"></video>
+   <div class="take" style="margin-top:9px"><div>
+     <b>${r.width}&times;${r.height} &middot; ${r.seconds}s</b>
+     <small>${(r.from/1048576).toFixed(1)} MB &rarr; <span style="color:#5cae7e">${(r.to/1048576).toFixed(1)} MB</span>
+     ${r.saved>0?'&middot; '+r.saved+'% smaller':''}</small></div>
+     <span class="pill">${r.to<500*1048576?'UNDER 500 MB':'STILL LARGE'}</span></div>
+   <div class="row" style="gap:8px;margin-top:9px;flex-wrap:wrap">
+     <button onclick="cutSave()">&#8681; SAVE THIS TO PHONE</button>
+     <button class="ghost" onclick="renderCutWork()">START OVER</button></div>`;
+ }catch(e){
+  box.innerHTML='<div class="am" style="border-color:#d9694e;margin:0"><b>Could not encode.</b><br>'+esc2(e.message)+'</div>';
+ }
+}
+function cutSave(){
+ const c=window.__cutOut; if(!c)return;
+ const name=takeFilename(Object.assign({},c.take,{type:c.r.blob.type}));
+ const f=(typeof File!=='undefined')?new File([c.r.blob],name,{type:c.r.blob.type||'video/mp4'}):null;
+ if(f&&navigator.canShare&&navigator.canShare({files:[f]})&&navigator.share){
+  navigator.share({files:[f],title:name}).catch(()=>{}); return;
+ }
+ const a=document.createElement('a'); a.href=URL.createObjectURL(c.r.blob); a.download=name;
+ document.body.appendChild(a); a.click();
+ setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1200);
+}
+
+
+/* ===== REMOTE =====
+   Bluetooth clickers do not speak one language. The cheap ones pretend to be a
+   keyboard and send Space, Enter, Page Up/Down or an arrow. Camera remotes send
+   volume up/down. Some send media transport keys.
+
+   So we listen for all three:
+     - keydown, for anything that presents as a keyboard
+     - mediaSession handlers, for transport keys
+     - a muted looping audio element, which is what keeps iOS routing media keys
+       to this page instead of to Music
+
+   Every route lands on the same toggle, so whatever you own probably works. */
+let REMOTE_ON=false, remoteAudio=null, remoteLast=0;
+
+function remoteFire(src){
+ const now=Date.now();
+ if(now-remoteLast<450) return;     // clickers bounce, and some send twice
+ remoteLast=now;
+ if(!MODE) return;                  // only while the stage is open
+ stageRec();
+ const el=$('sCoach');
+ if(el&&el.classList){
+  el.className='sCoach on check';
+  el.textContent=(sRecOn?'Recording':'Stopped')+' \u2014 '+src;
+  setTimeout(()=>{ if(el.classList)el.classList.remove('on'); },1400);
+ }
+}
+
+const REMOTE_KEYS=new Set([' ','Spacebar','Enter','PageUp','PageDown',
+ 'ArrowUp','ArrowDown','AudioVolumeUp','AudioVolumeDown','MediaPlayPause','MediaPlay','MediaStop','p','P']);
+
+function remoteKey(e){
+ if(!REMOTE_ON||!MODE)return;
+ const t=e.target&&e.target.tagName;
+ if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')return;
+ if(REMOTE_KEYS.has(e.key)){ e.preventDefault(); remoteFire('remote'); }
+}
+
+async function remoteEnable(){
+ if(REMOTE_ON) return remoteDisable();
+ REMOTE_ON=true;
+ window.addEventListener('keydown',remoteKey,true);
+ // iOS only routes media keys to a page that is playing something
+ try{
+  if(!remoteAudio){
+   const c=document.createElement('canvas'); c.width=c.height=1;
+   remoteAudio=document.createElement('audio');
+   remoteAudio.loop=true; remoteAudio.muted=true; remoteAudio.playsInline=true;
+   // 0.2s of silence, so there is a media session to attach to
+   remoteAudio.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=';
+  }
+  await remoteAudio.play().catch(()=>{});
+ }catch(e){}
+ try{
+  if(navigator.mediaSession){
+   navigator.mediaSession.metadata=new MediaMetadata({title:'ACTOR OS',artist:'Ready'});
+   ['play','pause','stop','nexttrack','previoustrack'].forEach(a=>{
+    try{ navigator.mediaSession.setActionHandler(a,()=>remoteFire('remote')); }catch(e){}
+   });
+   navigator.mediaSession.playbackState='playing';
+  }
+ }catch(e){}
+ remoteUI();
+}
+function remoteDisable(){
+ REMOTE_ON=false;
+ window.removeEventListener('keydown',remoteKey,true);
+ try{ if(remoteAudio)remoteAudio.pause(); }catch(e){}
+ try{ if(navigator.mediaSession){
+  ['play','pause','stop','nexttrack','previoustrack'].forEach(a=>{
+   try{ navigator.mediaSession.setActionHandler(a,null); }catch(e){} });
+  navigator.mediaSession.playbackState='none'; } }catch(e){}
+ remoteUI();
+}
+function remoteUI(){
+ const b=$('remoteBtn');
+ if(b&&b.textContent!==undefined){
+  b.textContent=REMOTE_ON?'REMOTE ON':'USE A REMOTE';
+  if(b.classList){ b.classList.toggle('ghost',!REMOTE_ON); }
+ }
+ const s2=$('remoteState');
+ if(s2&&s2.innerHTML!==undefined){
+  s2.innerHTML=REMOTE_ON
+   ? '<div class="am" style="margin:9px 0 0;border-color:#5cae7e">Listening. Press your clicker while the camera is open to start and stop. Volume, shutter, play/pause and space all work.</div>'
+   : '';
+ }
 }
 
 /* ===== READER BOOTH UI ===== */
@@ -1126,6 +1231,7 @@ async function openStage(){
   }
  }catch(e){ alert('Camera unavailable: '+e.message); return exitStage(); }
  drawStage(); stageCoach();
+ try{ const r=$('stageRemote'); if(r&&r.style)r.style.display=REMOTE_ON?'':'none'; }catch(e){}
 }
 function exitStage(){
  cancelCountdown(); if(sRecOn) stopRecording();
