@@ -1,0 +1,24 @@
+{
+  "gauntletVersion": "1.0",
+  "requiredTests": [
+    "G01_PERMISSIONS",
+    "G02_ENUMERATION",
+    "G03_CAMERA_SELECTION",
+    "G04_FOCUS_EXPOSURE",
+    "G05_STABILIZATION",
+    "G06_CINEMATIC_TRUTH",
+    "G07_MASTER_RECORDING",
+    "G08_RELAUNCH_PERSISTENCE",
+    "G09_HASH_SURVIVAL",
+    "G10_STORAGE_BATTERY",
+    "G11_ORIENTATION_MASTER_RULE",
+    "G12_ENDURANCE_10_MASTERS"
+  ],
+  "verdicts": [
+    "PASS",
+    "FAIL",
+    "UNSUPPORTED",
+    "UNKNOWN"
+  ],
+  "supportRule": "FAIL blocks promotion. UNSUPPORTED is acceptable only when runtime capability discovery also reports unsupported."
+}

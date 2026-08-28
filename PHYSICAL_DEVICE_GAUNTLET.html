@@ -1,0 +1,52 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ACTOR OS — Physical Device Gauntlet</title>
+<style>
+:root{--b:#0b0c0e;--p:#14171b;--l:#30363f;--i:#f1ede4;--m:#939aa5;--g:#d7a33d;--ok:#65b887;--bad:#db735e;--u:#7f8792}
+*{box-sizing:border-box}body{margin:0;background:var(--b);color:var(--i);font:15px system-ui}main{max-width:820px;margin:auto;padding:14px}
+h1{font-size:22px;margin:0}.sub{color:var(--m);margin:4px 0 14px}
+.card{background:var(--p);border:1px solid var(--l);border-radius:12px;padding:12px;margin:9px 0}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;min-height:44px;padding:9px 12px;border:1px solid var(--l);border-radius:9px;background:#1b1f25;color:var(--i)}
+.primary{background:var(--g);color:#171005;border-color:var(--g);font-weight:800}.status{font-weight:800;margin-left:auto}.PASS{color:var(--ok)}.FAIL{color:var(--bad)}.UNKNOWN,.UNSUPPORTED{color:var(--u)}
+pre{white-space:pre-wrap;overflow:auto;background:#0a0b0d;border:1px solid var(--l);border-radius:9px;padding:10px;color:var(--m)}
+</style>
+<main><h1>ACTOR OS · PHYSICAL DEVICE GAUNTLET</h1><div class=sub>Run inside the installed native app on a real phone/tablet. Browser mode should report native bridge unavailable.</div>
+<div id=list></div>
+<div class=card><div class=row><button id=exportBtn class=primary>EXPORT RUN JSON</button><button id=reset>RESET RUN</button><span id=overall class=status>INCOMPLETE</span></div><pre id=raw></pre></div>
+</main>
+<script src="../native_camera_bridge_v09.js"></script><script src="gauntlet_core.js"></script><script>
+const N=ActorOSNativeCamera,G=ActorOSGauntlet,$=s=>document.querySelector(s);
+const tests=[
+["G01_PERMISSIONS","Permissions",async()=>({native:N.available()})],
+["G02_ENUMERATION","Hardware enumeration",async()=>await N.discover()],
+["G03_CAMERA_SELECTION","Camera selection",async()=>await N.configure({position:"back",cinematic:false})],
+["G04_FOCUS_EXPOSURE","Focus + exposure",async()=>({focus:await N.tapFocus(.5,.5,true),exposure:await N.exposureLock(true,0)})],
+["G05_STABILIZATION","Stabilization",async()=>await N.stabilization("AUTO")],
+["G06_CINEMATIC_TRUTH","Cinematic truth",async()=>{const d=await N.discover();const any=(d.cameras||[]).some(c=>c.cinematic);if(!any)return {unsupported:true,discovery:d};return {supported:true,result:await N.cinematic(true,4.0)}}],
+["G07_MASTER_RECORDING","Record master",async()=>await N.startMaster("GAUNTLET","SCENE_1","landscape")],
+["G08_RELAUNCH_PERSISTENCE","Kill / relaunch persistence",async()=>({manual:"Kill app now, relaunch, then mark PASS only if prior master + receipt remain visible in native verifier."})],
+["G09_HASH_SURVIVAL","Hash survival",async()=>({manual:"Re-hash finalized master and compare to stored SHA-256 receipt."})],
+["G10_STORAGE_BATTERY","Storage + battery",async()=>await N.status()],
+["G11_ORIENTATION_MASTER_RULE","Orientation master rule",async()=>({manual:"Record one landscape CASTING master and one portrait SOCIAL master; verify distinct source dimensions/orientation."})],
+["G12_ENDURANCE_10_MASTERS","10-master endurance",async()=>({manual:"Record/finalize 10 masters; verify 10 unique UUID filenames and 10 matching receipts."})]
+];
+function render(){
+ list.innerHTML=tests.map(([id,label])=>{const s=G.last(id)?.status||"UNKNOWN";return `<div class=card><div class=row><b>${id}</b><span>${label}</span><span class="status ${s}">${s}</span><button data-run="${id}">RUN</button><button data-pass="${id}">PASS</button><button data-fail="${id}">FAIL</button><button data-unsup="${id}">UNSUPPORTED</button></div><pre>${JSON.stringify(G.last(id)?.data||{},null,2)}</pre></div>`}).join('');
+ list.querySelectorAll('[data-run]').forEach(b=>b.onclick=()=>runTest(b.dataset.run));
+ list.querySelectorAll('[data-pass]').forEach(b=>b.onclick=()=>{G.event(b.dataset.pass,'PASS',{manual:true});render()});
+ list.querySelectorAll('[data-fail]').forEach(b=>b.onclick=()=>{G.event(b.dataset.fail,'FAIL',{manual:true});render()});
+ list.querySelectorAll('[data-unsup]').forEach(b=>b.onclick=()=>{G.event(b.dataset.unsup,'UNSUPPORTED',{manual:true});render()});
+ const sum=G.summary();overall.textContent=sum.overall;overall.className='status '+(sum.overall==='PASS'?'PASS':sum.overall==='FAIL'?'FAIL':'UNKNOWN');raw.textContent=JSON.stringify(sum,null,2);
+}
+async function runTest(id){
+ const t=tests.find(x=>x[0]===id);if(!t)return;
+ try{
+   const d=await t[2]();
+   if(d?.unsupported)G.event(id,'UNSUPPORTED',d);
+   else if(d?.manual)G.event(id,'UNKNOWN',d);
+   else G.event(id,'PASS',d);
+ }catch(e){G.event(id,'FAIL',{error:e.message})}
+ render();
+}
+exportBtn.onclick=()=>G.download('ACTOR_OS_GAUNTLET_'+G.state().runId+'.json',{state:G.state(),summary:G.summary()});
+reset.onclick=()=>{G.reset();render()};render();
+</script>
