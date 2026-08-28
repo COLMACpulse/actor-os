@@ -110,10 +110,36 @@ Character cues sit at ~3.7in, dialogue at ~2.5in, action at ~1.5in. Using the
 indent makes the parse **more** reliable from a PDF than from pasted text, because
 nothing depends on guessing at capitalisation.
 
-Handles `FlateDecode`, `ASCII85Decode`, `ASCIIHexDecode` and filter chains.
+Handles `FlateDecode`, `ASCII85Decode`, `ASCIIHexDecode`, filter chains, hex
+strings from composite fonts, `ToUnicode` CMaps for subset fonts, and PDF 1.5+
+object streams.
+
+Real sides carry a lot that is not the scene. These are stripped: the diagonal
+security watermark, production headers, scene numbers in both margins, page
+footers, `(CONTINUED)`, `START`/`END`/`FYI` markers, and the self-tape
+instructions page.
+
+Breakdown Services names the file after the part, so `GURAM_DADIANI.pdf`
+preselects GURAM automatically.
 
 **Scanned sides have no text in them** — they are pictures of pages. The app says
 so plainly instead of returning an empty result that looks like a bug.
+
+## Your takes belong on your phone, not in a browser
+
+Browser storage is a cache. Safari can clear it without warning, and a web app
+gets a few hundred MB at best. **A take that only exists in IndexedDB is not
+saved.**
+
+So every take gets a **SAVE TO PHONE** button the moment you stop recording.
+On iOS that opens the share sheet, where *Save Video* writes to Photos - the camera
+roll, same as anything the phone shoots. Everywhere else it downloads to Files.
+
+Files are named for the work: `THE_LAST_LIGHT_GURAM_T1_20260828_1817.mp4`
+
+Every take is marked **saved to phone** or **browser only**, and CUT shows a
+standing banner listing anything not yet off the device. The app will not let you
+forget a take it cannot promise to keep.
 
 ## Storage
 

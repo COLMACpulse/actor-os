@@ -63,7 +63,7 @@ function parseCMap(txt){
 
 function findStreams(buf){
  const s=dec.decode(buf), out=[];
- const re=/stream(\r\n|\n|\r)/g; let m;
+ const re=/(?<![A-Za-z])stream(\r\n|\n|\r)/g; let m;
  while((m=re.exec(s))){
   const start=m.index+m[0].length;
   let end=s.indexOf('endstream',start);
@@ -107,15 +107,16 @@ function a85(bytes){
    combined regex do not line up and Tm silently never fired. */
 function readContent(txt){
  const items=[];
- let tx=0,ty=0,lead=14,stack=[];
- const TOK=/\((?:\\.|[^\\()])*\)|\[(?:[^\]\\]|\\.)*\]|-?[\d.]+|\/[^\s\/\[\]<>()]+|[A-Za-z*'"]+/g;
+ let tx=0,ty=0,lead=14,stack=[],curFont='';
+ const TOK=/\((?:\\.|[^\\()])*\)|<[0-9a-fA-F\s]*>|\[(?:[^\]\\]|\\.)*\]|-?[\d.]+|\/[^\s\/\[\]<>()]+|[A-Za-z*'"]+/g;
  let m;
  while((m=TOK.exec(txt))){
   const t=m[0];
-  if(t[0]==='('||t[0]==='['||t[0]==='/'||/^-?[\d.]+$/.test(t)){ stack.push(t); if(stack.length>12)stack.shift(); continue; }
+  if(t[0]==='('||t[0]==='['||t[0]==='/'||t[0]==='<'||/^-?[\d.]+$/.test(t)){ stack.push(t); if(stack.length>12)stack.shift(); continue; }
   const n=k=>parseFloat(stack[stack.length-k]);
   switch(t){
    case 'BT': tx=0;ty=0; break;
+   case 'Tf': { const f=stack[stack.length-2]; if(f&&f[0]==='/')curFont=f.slice(1); break; }
    case 'Td': ty+=n(1); tx+=n(2); break;
    case 'TD': lead=-n(1); ty+=n(1); tx+=n(2); break;
    case 'Tm': ty=n(1); tx=n(2); break;
@@ -123,26 +124,40 @@ function readContent(txt){
    case 'T*': ty-=lead; break;
    case 'Tj': case '\'': case '"': {
      const a=stack[stack.length-1]||'';
-     if(a[0]==='('){ const v=unesc(a.slice(1,-1)); if(v)items.push({x:tx,y:ty,s:v}); }
+     let v='';
+     if(a[0]==='(') v=unesc(a.slice(1,-1));
+     else if(a[0]==='<') v=hexStr(a);
+     if(v)items.push({x:tx,y:ty,s:v,font:curFont});
      if(t!=='Tj')ty-=lead;
      break; }
    case 'TJ': {
      const a=stack[stack.length-1]||'';
      if(a[0]==='['){
        let out='';
-       const pr=/\((?:\\.|[^\\()])*\)|-?[\d.]+/g; let q;
+       const pr=/\((?:\\.|[^\\()])*\)|<[0-9a-fA-F\s]*>|-?[\d.]+/g; let q;
        while((q=pr.exec(a.slice(1,-1)))){
          const v=q[0];
          if(v[0]==='(') out+=unesc(v.slice(1,-1));
+         else if(v[0]==='<') out+=hexStr(v);
          else if(parseFloat(v)<-120) out+=' ';
        }
-       if(out)items.push({x:tx,y:ty,s:out});
+       if(out)items.push({x:tx,y:ty,s:out,font:curFont});
      }
      break; }
   }
   stack.length=0;
  }
  return items;
+}
+/* a hex string holds 2-byte glyph codes for composite (Type0) fonts */
+function hexStr(tok){
+ const h=tok.replace(/[^0-9a-fA-F]/g,'');
+ let out='';
+ for(let i=0;i+1<h.length;i+=4){
+  const v=parseInt(h.substr(i,4),16);
+  if(!isNaN(v)) out+=String.fromCharCode(v);
+ }
+ return out;
 }
 function unesc(s){
  return s.replace(/\\([nrtbf()\\]|[0-7]{1,3})/g, (m,c)=>{
@@ -162,7 +177,7 @@ function toLines(items){
   rows.get(key).push(it);
  });
  return [...rows.entries()]
-  .sort((a,b)=>b[0]-a[0])                          // PDF y grows upward
+  .sort((a,b)=>a[0]-b[0])                          // observed order in real sides
   .map(([y,arr])=>{
     arr.sort((a,b)=>a.x-b.x);
     let s='',prev=null;
@@ -184,7 +199,7 @@ A.extract=async function(arrayBuffer){
  const encrypted=/\/Encrypt\s+\d+\s+\d+\s+R|\/Encrypt\s*<</.test(all);
  const version=(head.match(/%PDF-(\d\.\d)/)||[])[1]||'?';
  const streams=findStreams(buf);
- let items=[], cmap={}, sawCMap=false;
+ let pages=[], cmap={}, sawCMap=false;
  for(const st of streams){
   let data=buf.slice(st.start,st.end);
   let bad=false;
@@ -202,18 +217,24 @@ A.extract=async function(arrayBuffer){
   if(bad)continue;
   const txt=dec.decode(data);
   if(/beginbfchar|beginbfrange/.test(txt)){ Object.assign(cmap,parseCMap(txt)); sawCMap=true; continue; }
+  // objects compressed inside an /ObjStm - unpack and look again
+  if(/\/ObjStm/.test(dec.decode(buf.slice(Math.max(0,st.start-500),st.start)))){
+   if(/beginbfchar|beginbfrange/.test(txt)){ Object.assign(cmap,parseCMap(txt)); sawCMap=true; }
+   continue;
+  }
   if(!/\bTj\b|\bTJ\b/.test(txt))continue;
-  items=items.concat(readContent(txt));
+  const got=readContent(txt);
+  if(got.length)pages.push(got);
  }
  // if the raw text is mostly unprintable, the strings are glyph codes - remap
- const rawAll=items.map(i=>i.s).join('');
+ const rawAll=pages.flat().map(i=>i.s).join('');
  const printable=(rawAll.match(/[\x20-\x7e]/g)||[]).length/Math.max(1,rawAll.length);
  if(sawCMap && printable<0.72){
-  items=items.map(i=>({x:i.x,y:i.y,s:[...i.s].map(ch=>{
+  pages=pages.map(pg=>pg.map(i=>({x:i.x,y:i.y,s:[...i.s].map(ch=>{
     const c=ch.charCodeAt(0);
-    return (cmap[c]!==undefined)?cmap[c]:ch; }).join('')}));
+    return (cmap[c]!==undefined)?cmap[c]:ch; }).join('')})));
  }
- const lines=toLines(items);
+ const lines=pages.reduce((acc,pg)=>acc.concat(toLines(pg)),[]);
  const allTxt=lines.map(l=>l.text).join('');
  const pr=(allTxt.match(/[\x20-\x7e]/g)||[]).length/Math.max(1,allTxt.length);
  return {lines, chars:allTxt.length, printable:Math.round(pr*100)/100,
@@ -224,21 +245,68 @@ A.extract=async function(arrayBuffer){
 
 /* Turn positioned lines into the same shape the text parser produces.
    Character cue vs dialogue is decided by indent, not by guessing at case. */
+/* Real sides from Breakdown Services / Actors Access carry a lot that is not the
+   scene: a diagonal watermark, production headers, scene numbers in both margins,
+   page footers, and an instructions page. All of it has to go before the parse. */
+const JUNK=[
+ /^Sides by Breakdown Services/i,
+ /^\(?CONTINUED\)?:?$/i,
+ /^\d+\s*\/\s*\d+$/,                       // 1/4 page counter
+ /^\d+\s+CONTINUED:?(\s*\(\d+\))?\s+\d+$/i,// 5 CONTINUED: (2) 5
+ /^\d{1,3}\s+\d{1,3}$/,                    // scene number in both margins
+ /^\d{1,3}\.?$/,                           // bare page or scene number
+ /Studio\/Network Draft/i,
+ /^Role:\s*/i,
+ /^(START|END|FYI)\s*$/i,
+ /^[\u2190\u2192\u2794]+$/,
+];
+function isWatermark(l){
+ const t=l.text;
+ if(l.x<0||l.x>620) return true;                 // rotated / off-page
+ if(/^(E\d{3}-){3,}/.test(t)) return true;       // E382-E382-E382...
+ if(/(\d{1,2}:\d{2}\s*(AM|PM)\s*-\s*\d+\s*-\s*){2,}/i.test(t)) return true;
+ if(/(\w+\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*(AM|PM)[^a-z]*){2,}/i.test(t)) return true;
+ return false;
+}
+A.clean=function(lines){
+ return lines.filter(l=>{
+  const t=(l.text||'').trim();
+  if(!t) return false;
+  if(isWatermark(l)) return false;
+  if(JUNK.some(rx=>rx.test(t))) return false;
+  return true;
+ });
+};
+/* The header names the part on every page - that is who the actor is. */
+A.roleFrom=function(lines){
+ for(const l of lines){
+  const m=(l.text||'').match(/^Role:\s*(.+?)\s*$/i);
+  if(m) return m[1].trim().toUpperCase();
+ }
+ return '';
+};
+/* Instructions pages have no character cues. Drop any leading run without one. */
+A.trimToScene=function(lines){
+ const first=lines.findIndex(l=>l.x>=240&&l.x<=340&&/^[A-Z][A-Z0-9 .'\u2019\-()]{1,32}$/.test(l.text.trim()));
+ return first>0?lines.slice(first):lines;
+};
+
 A.toSides=function(lines){
+ lines=A.trimToScene(A.clean(lines));
  if(!lines.length)return '';
  const xs=lines.map(l=>l.x).sort((a,b)=>a-b);
- const actionX=xs[0];                                  // leftmost = action / slug
+ const actionX=xs[0];
  const capIndents=lines.filter(l=>l.text===l.text.toUpperCase()&&l.text.length<34&&/[A-Z]{2}/.test(l.text)).map(l=>l.x);
  const cueX = capIndents.length ? capIndents.sort((a,b)=>b-a)[Math.floor(capIndents.length*0.25)] : actionX+150;
  const out=[];
  lines.forEach(l=>{
-  const isCue = l.x>=cueX-14 && l.text===l.text.toUpperCase() && l.text.length<34 && /[A-Z]{2}/.test(l.text);
-  // action sits at the left margin. Without a blank line before it the text
-  // parser folds it into the previous character's dialogue.
-  const isAction = !isCue && l.x<=actionX+10;
-  if(isCue) out.push('', l.text.replace(/\s*\(CONT'?D\)\s*/i,'').trim(), null);
-  else if(isAction) out.push('', l.text, '');
-  else out.push(l.text);
+  const txt=l.text.replace(/\u2019/g,"'").replace(/\u2018/g,"'").replace(/[\u201c\u201d]/g,'"').replace(/\u00d5/g,"'");
+  const isCue = l.x>=cueX-16 && txt===txt.toUpperCase() && txt.length<34 && /[A-Z]{2}/.test(txt)
+                && !/^(INT|EXT|I\/E)[\.\s]/.test(txt);
+  const isAction = !isCue && l.x<=actionX+12;
+  if(isCue) out.push('', txt.replace(/\s*\(CONT'?D\)\s*/i,'').trim(), null);
+  else if(isAction) out.push('', txt, '');
+  else out.push(txt);
  });
  return out.filter(x=>x!==null).join('\n').replace(/\n{3,}/g,'\n\n').trim();
 };

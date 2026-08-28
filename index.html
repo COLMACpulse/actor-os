@@ -99,6 +99,13 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
  z-index:9600;background:rgba(20,20,24,.96);border:1px solid var(--line2);color:#ECE7DC;
  padding:11px 16px;border-radius:10px;font:500 13px/1 var(--mono,ui-monospace);opacity:0;pointer-events:none;transition:opacity .18s}
 .stoast.on{opacity:1}
+
+.unsaved{display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+ border:1px solid #E0A23C;background:rgba(224,162,60,.10);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12.5px}
+.unsaved.on{display:flex}
+.unsaved b{color:var(--ink)}
+.sBtn.savebtn{background:#E0A23C;color:#12100c;border-color:#E0A23C;font-weight:700}
+.sBtn.savebtn.done{background:transparent;color:#5cae7e;border-color:#5cae7e}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · No deadline · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
 <nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="send">SEND</button></nav>
@@ -166,7 +173,8 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
     <div class="hidden"><b id="lightVal">—</b><b id="rmsVal">—</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet">nothing needs your attention</div></div>
   </div></div>
 </div>
-<section id="cut" class="panel"><div class="am">Actor Cut Room rules: DROP / HOLD / SURVIVOR. One survivor per scene. The software does not score acting.</div><div class="section"><h3>Takes</h3><div class="inside" id="cutTakes"></div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="grid2"><div><label>Trim in (sec)</label><input id="trimIn" type="number" step=".1" value="0"></div><div><label>Trim out (sec)</label><input id="trimOut" type="number" step=".1" value="0"></div></div><div class="row"><button onclick="applyTrim()">APPLY TO SURVIVOR</button><button onclick="addSlate()">+ SLATE</button></div></div></div></section>
+<section id="cut" class="panel"><div class="am">Actor Cut Room rules: DROP / HOLD / SURVIVOR. One survivor per scene. The software does not score acting.</div><div id="unsavedBar" class="unsaved"></div>
+<div class="section"><h3>Takes</h3><div class="inside" id="cutTakes"></div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="grid2"><div><label>Trim in (sec)</label><input id="trimIn" type="number" step=".1" value="0"></div><div><label>Trim out (sec)</label><input id="trimOut" type="number" step=".1" value="0"></div></div><div class="row"><button onclick="applyTrim()">APPLY TO SURVIVOR</button><button onclick="addSlate()">+ SLATE</button></div></div></div></section>
 <section id="send" class="panel"><div class="am">One master, purpose-built derivatives. Never compress the compressed copy.</div><div class="section"><h3>Destination Engine</h3><div class="inside"><div class="dest" id="destinations"></div><div id="sendCheck" class="take" style="margin-top:10px"></div><div class="row" style="margin-top:10px"><button class="primary" onclick="preparePackage()">PREPARE PACKAGE</button><button onclick="sharePackage()">SHARE / EXPORT</button></div></div></div><div class="section"><h3>Delivery + Archive Ledger</h3><div class="inside"><div class="receipt" id="receipt">No package prepared.</div></div></div></section>
 <div class="bottom"><span>AMOAM UNDER THE HOOD</span><span>PROJECT HUB BRIDGE · OPTIONAL / FUTURE</span></div></div>
 <script>
@@ -245,9 +253,9 @@ function flipCam(){ camFacing = camFacing==='user'?'environment':'user';
 function startMeters(){try{audioCtx=new AudioContext();let src=audioCtx.createMediaStreamSource(stream);analyser=audioCtx.createAnalyser();analyser.fftSize=1024;src.connect(analyser);let data=new Uint8Array(analyser.fftSize);const cvs=document.createElement('canvas'),ctx=cvs.getContext('2d');cvs.width=64;cvs.height=64;function loop(){analyser.getByteTimeDomainData(data);let ss=0;for(let v of data){let x=(v-128)/128;ss+=x*x}let rms=Math.sqrt(ss/data.length);$('rmsVal').textContent=rms.toFixed(2);let v=$('preview');if(v.videoWidth){ctx.drawImage(v,0,0,64,64);let p=ctx.getImageData(0,0,64,64).data,s=0;for(let i=0;i<p.length;i+=4)s+=(.2126*p[i]+.7152*p[i+1]+.0722*p[i+2])/255;let l=s/(p.length/4);$('lightVal').textContent=l.toFixed(2);$('hudTech').textContent='LIGHT '+l.toFixed(2)+' · AUDIO '+rms.toFixed(2)}raf=requestAnimationFrame(loop)}loop()}catch(e){}}
 if($('recBtn'))$('recBtn').onclick=()=>{if(!stream)return alert('Start camera first.');chunks=[];rec=new MediaRecorder(stream);rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onstop=()=>{let blob=new Blob(chunks,{type:rec.mimeType}),url=URL.createObjectURL(blob);state.takes.push({id:Date.now().toString(36),scene:state.scene,n:state.takes.filter(t=>t.scene===state.scene).length+1,status:'HOLD',bytes:blob.size,type:blob.type,url,trimIn:0,trimOut:0,created:new Date().toISOString()});localStorage.setItem(KEY,JSON.stringify(state));renderTakes();};rec.start();$('recState').textContent='RECORDING';$('recBtn').disabled=true;$('stopBtn').disabled=false};
 if($('stopBtn'))$('stopBtn').onclick=()=>{if(rec&&rec.state!=='inactive')rec.stop();$('recState').textContent='READY';$('recBtn').disabled=false;$('stopBtn').disabled=true};
-function renderTakes(){$('takeCount').textContent=state.takes.length;$('takeList').innerHTML=state.takes.slice().reverse().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>SCENE ${t.scene} · TAKE ${t.n}</b><small>${t.status} · ${(t.bytes/1048576).toFixed(1)} MB</small></div><div class="row"><button class="mini" onclick="setTake('${t.id}','DROP')">DROP</button><button class="mini" onclick="setTake('${t.id}','HOLD')">HOLD</button><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">SURVIVOR</button></div></div>`).join('')}
+function renderTakes(){$('takeCount').textContent=state.takes.length;try{unsavedBanner();}catch(e){}$('takeList').innerHTML=state.takes.slice().reverse().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>SCENE ${t.scene} · TAKE ${t.n}</b><small>${t.status} · ${(t.bytes/1048576).toFixed(1)} MB · ${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'}</small></div><div class="row"><button class="mini" onclick="saveTakeToDevice('${t.id}')" style="border-color:#E0A23C;color:#E0A23C">&#8681; SAVE</button><button class="mini" onclick="setTake('${t.id}','DROP')">DROP</button><button class="mini" onclick="setTake('${t.id}','HOLD')">HOLD</button><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">SURVIVOR</button></div></div>`).join('')}
 function setTake(id,s){let t=state.takes.find(x=>x.id===id);if(!t)return;if(s==='SURVIVOR')state.takes.filter(x=>x.scene===t.scene).forEach(x=>{if(x.id!==id&&x.status==='SURVIVOR')x.status='HOLD'});t.status=s;localStorage.setItem(KEY,JSON.stringify(state));renderTakes();renderCut()}window.setTake=setTake;
-function renderCut(){$('cutTakes').innerHTML=state.takes.length?state.takes.map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>Scene ${t.scene} · Take ${t.n}</b><small>${t.status} · trim ${t.trimIn||0} / ${t.trimOut||0}</small></div><div><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">USE</button></div></div>`).join(''):'No takes yet.';let surv=state.takes.filter(t=>t.status==='SURVIVOR');state.sequence=surv.map(t=>t.id);$('timeline').innerHTML=surv.map(t=>`<div class=clip><b>SCENE ${t.scene}</b><small>TAKE ${t.n} · SURVIVOR</small></div>`).join('')||'<span class=pill>No survivor selected.</span>';}
+function renderCut(){$('cutTakes').innerHTML=state.takes.length?state.takes.map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>Scene ${t.scene} · Take ${t.n}</b><small>${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'} · ${t.status} · trim ${t.trimIn||0} / ${t.trimOut||0}</small></div><div><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">USE</button></div></div>`).join(''):'No takes yet.';let surv=state.takes.filter(t=>t.status==='SURVIVOR');state.sequence=surv.map(t=>t.id);$('timeline').innerHTML=surv.map(t=>`<div class=clip><b>SCENE ${t.scene}</b><small>TAKE ${t.n} · SURVIVOR</small></div>`).join('')||'<span class=pill>No survivor selected.</span>';}
 function applyTrim(){let t=state.takes.find(t=>t.status==='SURVIVOR');if(!t)return alert('Select a survivor first.');t.trimIn=+$('trimIn').value||0;t.trimOut=+$('trimOut').value||0;localStorage.setItem(KEY,JSON.stringify(state));renderCut()}function addSlate(){state.sequence.push('SLATE');$('timeline').insertAdjacentHTML('beforeend','<div class=clip><b>SLATE</b><small>office-specific / actor-selected</small></div>')}
 function slatePreview(){const pts=[];for(let i=0;i<=10;i++){let u=i/10;let y=u<.4?.2+(.75-.2)*(3*(u/.4)**2-2*(u/.4)**3):u<.55?.75:.75+(.25-.75)*(3*((u-.55)/.45)**2-2*((u-.55)/.45)**3);pts.push(y.toFixed(2))}$('slateState').textContent='PAN Y · '+pts.join(' → ')}
 const profiles={ACTORS_ACCESS:['Actors Access','Browser upload handoff'],REPRESENTATION:['Agent / Manager','Native share / transfer'],SOCIAL_VERTICAL:['Social · Vertical','9:16 derivative'],SOCIAL_LANDSCAPE:['Social · Landscape','16:9 derivative'],SAVE_MASTER:['Save Master','Full-quality source']};
@@ -359,6 +367,22 @@ function pdfCopy(){
   $('sidesText').value=t; togglePaste();
  });
 }
+function guessMe(fname,speakers){
+ if(!fname||!speakers.length)return '';
+ const base=fname.replace(/\.[^.]+$/,'').replace(/[_\-]+/g,' ').replace(/\(\d+\)/g,'')
+   .replace(/\s+/g,' ').trim().toUpperCase();
+ let best='',score=0;
+ speakers.forEach(sp=>{
+  const n=sp.name.toUpperCase();
+  let sc=0;
+  if(base===n) sc=100;
+  else if(base.startsWith(n+' ')||base.endsWith(' '+n)) sc=80;
+  else if(base.split(' ').includes(n)) sc=70;
+  else if(base.includes(n)&&n.length>3) sc=50;
+  if(sc>score){score=sc;best=sp.name;}
+ });
+ return score>=50?best:'';
+}
 function loadSides(text,fname){
  if(fname)SIDES.file=fname;
  if(!text||!text.trim())return;
@@ -367,6 +391,8 @@ function loadSides(text,fname){
  if(!SIDES.speakers.length){
   $('sidesOut').innerHTML='<div class="am" style="border-color:#d9694e">Could not find any character names. Sides usually look like <b>NAME</b> on its own line, or <b>NAME:</b> before the line.</div>';
   return;}
+ const guess=guessMe(SIDES.file,SIDES.speakers);
+ if(guess&&!SIDES.me){ pickMe(guess); return; }
  SIDES.me=SIDES.me||'';
  renderSides();
 }
@@ -469,6 +495,76 @@ async function boothClear(){
  const all=await ActorReader.all();
  for(const c of all) await ActorReader.del(c.id);
  await boothRefresh();
+}
+
+
+/* ===== GETTING THE TAKE OFF THE PHONE =====
+   Browser storage is a cache. Safari can clear it without warning and gives a web
+   app a few hundred MB at best. A take that only exists in IndexedDB is not saved.
+
+   navigator.share() with a File opens the iOS share sheet, where "Save Video"
+   writes to Photos - the camera roll, same as anything the phone shoots.
+   Everything else falls back to a download, which lands in Files. */
+function takeFilename(t){
+ const proj=(($('project')&&$('project').value)||'TAKE').replace(/[^\w]+/g,'_').replace(/^_|_$/g,'');
+ const role=(SIDES.me||($('role')&&$('role').value)||'').replace(/[^\w]+/g,'_').replace(/^_|_$/g,'');
+ const d=new Date(t.created||Date.now());
+ const stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')
+   +'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+ const ext=(t.type||'').includes('mp4')?'mp4':((t.type||'').includes('webm')?'webm':'mp4');
+ return [proj,role,'T'+t.n,stamp].filter(Boolean).join('_')+'.'+ext;
+}
+function canShareVideo(blob,name){
+ try{
+  const f=new File([blob],name,{type:blob.type||'video/mp4'});
+  return !!(navigator.canShare && navigator.canShare({files:[f]}) && navigator.share);
+ }catch(e){ return false; }
+}
+async function saveTakeToDevice(id){
+ const t=state.takes.find(x=>x.id===id); if(!t) return;
+ let blob=await ActorReader.getTake(id).catch(()=>null);
+ if(!blob && t.url){ try{ blob=await (await fetch(t.url)).blob(); }catch(e){} }
+ if(!blob) return stageToast('That take is no longer in storage.');
+ const name=takeFilename(t);
+ if(canShareVideo(blob,name)){
+  try{
+   await navigator.share({files:[new File([blob],name,{type:blob.type||'video/mp4'})],title:name});
+   markSaved(t); stageToast('Saved. Check Photos or wherever you sent it.');
+   return;
+  }catch(e){ if(e && e.name==='AbortError') return; }
+ }
+ // fallback: a real download. On iOS this goes to Files.
+ try{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
+  markSaved(t); stageToast('Downloaded as '+name);
+ }catch(e){ stageToast('Could not save: '+e.message); }
+}
+function markSaved(t){
+ t.savedToDevice=true; t.savedAt=new Date().toISOString();
+ try{ localStorage.setItem(KEY,JSON.stringify(state)); renderTakes(); }catch(e){}
+ const w=$('takeReview'); if(w&&w.querySelector){ const b=w.querySelector('.savebtn');
+  if(b){ b.textContent='SAVED'; b.classList.add('done'); } }
+}
+function unsavedCount(){ return (state.takes||[]).filter(t=>t.status!=='DROP'&&!t.savedToDevice).length; }
+function unsavedBanner(){
+ const n=unsavedCount(); const el=$('unsavedBar');
+ if(!el||!el.classList)return;
+ if(!n){ el.classList.remove('on'); return; }
+ el.classList.add('on');
+ el.innerHTML=`<span><b>${n} take${n===1?'':'s'} not saved to this phone yet.</b>
+   Browser storage can be cleared without warning.</span>
+   <button class="mini" onclick="saveAllTakes()">SAVE ${n===1?'IT':'THEM'}</button>`;
+}
+async function saveAllTakes(){
+ for(const t of (state.takes||[])){
+  if(t.status==='DROP'||t.savedToDevice)continue;
+  await saveTakeToDevice(t.id);
+  await new Promise(r=>setTimeout(r,600));
+ }
+ unsavedBanner();
 }
 
 /* ---------- the stage ---------- */
@@ -587,10 +683,11 @@ function showTakeReview(t, blob){
  w.innerHTML=`<div class="rv">
    <video src="${t.url}" controls playsinline autoplay></video>
    <div class="rvbar">
-     <div><b>Take ${t.n}</b><small>${t.secs}s &middot; ${(t.bytes/1048576).toFixed(1)} MB</small></div>
+     <div><b>Take ${t.n}</b><small>${t.secs}s &middot; ${(t.bytes/1048576).toFixed(1)} MB &middot; <span style="color:#E0A23C">not saved to this phone yet</span></small></div>
      <div class="rvbtns">
        <button class="sBtn" onclick="reviewDrop('${t.id}')">DROP</button>
        <button class="sBtn" onclick="reviewAgain()">GO AGAIN</button>
+       <button class="sBtn savebtn" onclick="saveTakeToDevice('${t.id}')">&#8681; SAVE TO PHONE</button>
        <button class="sBtn keep" onclick="reviewKeep('${t.id}')">KEEP</button>
      </div>
    </div></div>`;
