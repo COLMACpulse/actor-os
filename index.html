@@ -106,6 +106,7 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 .unsaved b{color:var(--ink)}
 .sBtn.savebtn{background:#E0A23C;color:#12100c;border-color:#E0A23C;font-weight:700}
 .sBtn.savebtn.done{background:transparent;color:#5cae7e;border-color:#5cae7e}
+.mk{display:inline-block;font-size:8.5px;letter-spacing:.14em;color:#12100c;background:var(--gold);border-radius:3px;padding:1px 6px;margin-left:7px;vertical-align:middle}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · No deadline · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
 <nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="send">SEND</button></nav>
@@ -309,7 +310,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 <script src="qr.js"></script>
 <script>
 /* ===================== SIDES + STAGE ===================== */
-let SIDES={beats:[],speakers:[],me:'',script:[]};
+let SIDES={beats:[],speakers:[],me:'',script:[],startIx:-1,endIx:-1};
 function togglePaste(){const w=$('pasteWrap');w.style.display=w.style.display==='none'?'block':'none';}
 function toggleAdv(){const b=$('advBody');b.style.display=b.style.display==='none'?'block':'none';}
 $('sidesFile').addEventListener('change',async e=>{
@@ -335,6 +336,7 @@ $('sidesFile').addEventListener('change',async e=>{
      'The PDF uses an embedded font with no character map, so the letters are stored as glyph numbers. Paste the lines in instead.');
   }
   const txt=ActorPDF.toSides(ex.lines);
+  window.PDF_MARKERS=ActorPDF.findMarkers(ActorPDF.clean(ex.lines));
   const beats=ActorSides.parse(txt);
   if(!ActorSides.speakers(beats).length){
    return pdfProblem(f,ex,'Text came out, but no character names.',
@@ -417,7 +419,16 @@ function loadSides(text,fname){
  SIDES.me=SIDES.me||'';
  renderSides();
 }
-function pickMe(n){SIDES.me=n;SIDES.script=ActorSides.script(SIDES.beats,n);renderSides();boothRefresh();}
+function pickMe(n){
+ SIDES.me=n; SIDES.script=ActorSides.script(SIDES.beats,n);
+ loadRange();
+ if(SIDES.startIx<0 && window.PDF_MARKERS && PDF_MARKERS.start>=0){
+  // a typed marker, if the file happened to carry one
+  const near=SIDES.script.findIndex(b=>b.mine);
+  SIDES.startIx=near>=0?near:0;
+ }
+ renderSides(); boothRefresh();
+}
 function renderSides(){
  const sp=SIDES.speakers;
  let h='<div class="am" style="margin:0 0 10px">Which one are you?</div><div class="row" style="gap:7px;flex-wrap:wrap">';
@@ -428,10 +439,24 @@ function renderSides(){
   const mins=Math.floor(st.estSeconds/60), secs=st.estSeconds%60;
   h+=`<div class="take" style="margin-top:12px"><div><b>${st.lines} line${st.lines===1?'':'s'} &middot; ${st.words} words</b>
    <small>about ${mins?mins+'m ':''}${secs}s of speaking</small></div><span class="pill">${esc2(SIDES.me)}</span></div>`;
-  h+='<div style="margin-top:10px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:9px">';
-  SIDES.script.forEach(b=>{
-   h+=`<div style="padding:8px 11px;border-bottom:1px solid var(--line);font-size:12.5px;${b.mine?'':'opacity:.55'}">
-     <b style="font-size:9.5px;letter-spacing:.14em;color:${b.mine?'var(--gold)':'var(--mut)'}">${esc2(b.who)}</b><br>${esc2(b.text)}</div>`;});
+  h+=`<div class="am" style="margin:12px 0 8px">Tap a line to mark where the scene <b>starts</b> and <b>ends</b>. Casting usually writes these by hand, so they are not in the file &mdash; set them here once and they stick.
+   ${rangeActive()?`<button class="mini ghost" style="margin-left:8px" onclick="clearRange()">CLEAR</button>`:''}</div>`;
+  h+='<div style="margin-top:6px;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:9px">';
+  SIDES.script.forEach((b,i)=>{
+   const on=inRange(i), isS=(SIDES.startIx===i), isE=(SIDES.endIx===i);
+   h+=`<div style="padding:8px 11px;border-bottom:1px solid var(--line);font-size:12.5px;
+      ${on?'':'opacity:.32'};${isS||isE?'background:rgba(224,162,60,.10)':''}">
+     <div style="display:flex;gap:9px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+       <b style="font-size:9.5px;letter-spacing:.14em;color:${b.mine?'var(--gold)':'var(--mut)'}">${esc2(b.who)}</b>
+       ${isS?'<span class="mk">START</span>':''}${isE?'<span class="mk">END</span>':''}
+       <div style="margin-top:2px">${esc2(b.text)}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex:0 0 auto">
+       <button class="mini ${isS?'':'ghost'}" onclick="setStart(${i})" title="scene starts here">&#9654;</button>
+       <button class="mini ${isE?'':'ghost'}" onclick="setEnd(${i})" title="scene ends here">&#9632;</button>
+      </div></div></div>`;
+  });
   h+='</div>';
  }
  $('sidesOut').innerHTML=h;
@@ -535,13 +560,45 @@ window.addEventListener('load',()=>{
  },400);
 });
 
+
+/* ===== SCENE RANGE =====
+   Casting marks where your scene starts and stops - usually by hand, sometimes
+   stamped. Handwriting is ink on the page: there is no text to find, so it cannot
+   be detected. You mark it here instead, and the marks stick to the lines.
+
+   Everything outside the range still parses - it is context, and the reader booth
+   ignores it. */
+function rangeActive(){ return SIDES.startIx>0 || (SIDES.endIx>=0 && SIDES.endIx<SIDES.script.length-1); }
+function inRange(i){
+ const a=SIDES.startIx>=0?SIDES.startIx:0;
+ const b=SIDES.endIx>=0?SIDES.endIx:SIDES.script.length-1;
+ return i>=a && i<=b;
+}
+function setStart(i){ SIDES.startIx=i; if(SIDES.endIx>=0&&SIDES.endIx<i)SIDES.endIx=-1; saveRange(); renderSides(); boothRefresh(); }
+function setEnd(i){ SIDES.endIx=i; if(SIDES.startIx>i)SIDES.startIx=-1; saveRange(); renderSides(); boothRefresh(); }
+function clearRange(){ SIDES.startIx=-1; SIDES.endIx=-1; saveRange(); renderSides(); boothRefresh(); }
+function saveRange(){
+ try{ localStorage.setItem('actor_os_range_'+(SIDES.file||'x'),
+   JSON.stringify({s:SIDES.startIx,e:SIDES.endIx,me:SIDES.me})); }catch(e){}
+}
+function loadRange(){
+ try{ const r=JSON.parse(localStorage.getItem('actor_os_range_'+(SIDES.file||'x'))||'null');
+   if(r){ SIDES.startIx=r.s; SIDES.endIx=r.e; } }catch(e){}
+}
+/* the script the take actually runs on */
+function activeScript(){
+ if(!SIDES.script.length)return [];
+ if(!rangeActive())return SIDES.script;
+ return SIDES.script.filter((b,i)=>inRange(i));
+}
+
 /* ===== READER BOOTH UI ===== */
 let BOOTH={}, boothBusy=null, boothQueue=[], boothSeq=false;
 function boothKey(b){ return ActorReader.keyFor(SIDES.file||'sides', b.who, b.text); }
 
 async function boothRefresh(){
  if(!SIDES.me||!SIDES.script.length){ $('boothWrap').style.display='none'; return; }
- const others=SIDES.script.filter(b=>!b.mine);
+ const others=activeScript().filter(b=>!b.mine);
  if(!others.length){ $('boothWrap').style.display='none'; return; }
  $('boothWrap').style.display='';
  const have=await ActorReader.all();
@@ -678,10 +735,10 @@ async function saveAllTakes(){
 /* ---------- the stage ---------- */
 let MODE=null, sIdx=0, sRecOn=false, sRecorder=null, sChunks=[], sT0=0, sTimer=null, sCoachT=null, sSpeak=null;
 function startMode(m){
- if((m==='PARTNER'||m==='PROMPTER') && !SIDES.script.length){
+ if((m==='PARTNER'||m==='PROMPTER') && !activeScript().length){
   $('modeWarn').style.display='block'; return; }
  MODE=m; sIdx=0;
- if(MODE!=='READER') sIdx=SIDES.script.findIndex(b=>b.mine);
+ if(MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); }
  if(sIdx<0)sIdx=0;
  openStage();
 }
@@ -718,7 +775,7 @@ function stageFlip(){ window.camFacing=(window.camFacing==='environment')?'user'
 function drawStage(){
  const T=$('sText'), N=$('sNav');
  if(MODE==='READER'){ T.innerHTML=''; N.innerHTML=''; return; }
- const b=SIDES.script[sIdx]; if(!b){T.innerHTML='';N.innerHTML='';return;}
+ const b=(SIDES.run||SIDES.script)[sIdx]; if(!b){T.innerHTML='';N.innerHTML='';return;}
  if(MODE==='PARTNER'){
   // the app reads the other part; your line is never shown
   T.innerHTML = b.mine
@@ -732,14 +789,14 @@ function drawStage(){
     : `<div class="sWho">${esc2(b.who)}</div><div class="sCue">${esc2(b.text)}</div>`;
  }
  N.innerHTML=`<button class="sBtn" onclick="stageStep(-1)">&#9664;</button>
-   <span class="sBtn" style="pointer-events:none">${sIdx+1} / ${SIDES.script.length}</span>
+   <span class="sBtn" style="pointer-events:none">${sIdx+1} / ${(SIDES.run||SIDES.script).length}</span>
    <button class="sBtn" onclick="stageStep(1)">&#9654;</button>
    ${MODE==='PARTNER'?`<button class="sBtn" onclick="speakPartner()">&#9835; READ</button>`:''}`;
 }
-function stageStep(d){ sIdx=Math.max(0,Math.min(SIDES.script.length-1,sIdx+d)); drawStage();
- if(MODE==='PARTNER'&&!SIDES.script[sIdx].mine) speakPartner(); }
+function stageStep(d){ sIdx=Math.max(0,Math.min((SIDES.run||SIDES.script).length-1,sIdx+d)); drawStage();
+ if(MODE==='PARTNER'&&!(SIDES.run||SIDES.script)[sIdx].mine) speakPartner(); }
 function speakPartner(){
- const b=SIDES.script[sIdx]; if(!b||b.mine)return;
+ const b=(SIDES.run||SIDES.script)[sIdx]; if(!b||b.mine)return;
  const k=boothKey(b), c=BOOTH[k];
  if(!c){
   // no recording for this line - say so rather than substituting a robot
@@ -803,7 +860,7 @@ function showTakeReview(t, blob){
  document.body.appendChild(w);
 }
 function closeReview(){ const w=$('takeReview'); if(w&&w.remove) w.remove(); }
-function reviewAgain(){ closeReview(); if(MODE&&MODE!=='READER'){ sIdx=SIDES.script.findIndex(b=>b.mine); if(sIdx<0)sIdx=0; drawStage(); } }
+function reviewAgain(){ closeReview(); if(MODE&&MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); if(sIdx<0)sIdx=0; drawStage(); } }
 function reviewDrop(id){
  const t=state.takes.find(x=>x.id===id); if(t)t.status='DROP';
  try{ localStorage.setItem(KEY,JSON.stringify(state)); renderTakes(); }catch(e){}

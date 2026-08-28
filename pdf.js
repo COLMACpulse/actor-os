@@ -257,8 +257,7 @@ const JUNK=[
  /^\d{1,3}\.?$/,                           // bare page or scene number
  /Studio\/Network Draft/i,
  /^Role:\s*/i,
- /^(START|END|FYI)\s*$/i,
- /^[\u2190\u2192\u2794]+$/,
+ /^FYI\s*$/i,
 ];
 function isWatermark(l){
  const t=l.text;
@@ -291,6 +290,17 @@ A.trimToScene=function(lines){
  return first>0?lines.slice(first):lines;
 };
 
+/* Look for typed START / END markers. Returns indices into the cleaned lines,
+   or -1. Handwritten markers are ink on the page and cannot be found this way. */
+A.findMarkers=function(lines){
+ let start=-1,end=-1;
+ lines.forEach((l,i)=>{
+  const t=(l.text||'').trim();
+  if(start<0 && /(^|\s)(START|BEGIN)\s*[\u2192\u2794>\-]*\s*$|^[\u2192\u2794>]+\s*START/i.test(t)) start=i;
+  if(/^[\u2190<\-]*\s*(END|STOP)(\s|$)|(^|\s)(END|STOP)\s*$/i.test(t)) end=i;
+ });
+ return {start,end};
+};
 A.toSides=function(lines){
  lines=A.trimToScene(A.clean(lines));
  if(!lines.length)return '';

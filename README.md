@@ -125,6 +125,19 @@ preselects GURAM automatically.
 **Scanned sides have no text in them** — they are pictures of pages. The app says
 so plainly instead of returning an empty result that looks like a bug.
 
+## Marking where the scene starts and ends
+
+Casting marks the range on your sides &mdash; usually **by hand**. Handwriting is
+ink on the page: there is no text in the file to find, so no parser can detect it.
+Anyone claiming otherwise is guessing.
+
+So you mark it. Tap a line for **START**, tap another for **END**. Everything
+outside the range dims but stays readable as context, and the marks are stored
+against that file &mdash; set them once and they persist.
+
+It matters more than it sounds. On a real four-page side, marking the range took
+the reader booth from **23 lines to record down to 10**.
+
 ## Slate card, not a watermark
 
 Casting instructions routinely read: *do not edit video with cross-fades or labels
