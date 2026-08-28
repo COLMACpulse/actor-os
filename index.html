@@ -134,6 +134,26 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 </div>
 </div></div>
 
+<div class="section"><h3>You</h3><div class="inside">
+<div class="grid2">
+ <div><label>Name as casting sees it</label>
+  <input id="actorName" placeholder="BRENDAN McCARTHY" oninput="localStorage.setItem('actor_os_name',this.value)"></div>
+ <div><label>Your page &mdash; optional, for the slate QR</label>
+  <input id="actorURL" placeholder="https://brendanmccarthyactor.com" oninput="localStorage.setItem('actor_os_url',this.value);drawSlate()"></div>
+</div>
+<div class="am" style="margin-top:10px">Files come out named the way Actors Access names them &mdash; <b id="fnPreview">NAME_Role_Tk1.mp4</b></div>
+</div></div>
+
+<div class="section"><h3>Slate card</h3><div class="inside">
+<div class="am" style="margin:0 0 11px">A card to hold in frame before the scene, or to shoot as your slate file.
+<b>Casting offices ask for no labels on the scene itself</b> &mdash; before it is fine, on it is not. Nothing is ever burned into your take.</div>
+<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+ <button class="ghost" onclick="toggleSlate()">SHOW / HIDE</button>
+ <button class="ghost" onclick="downloadSlate()">SAVE AS IMAGE</button>
+</div>
+<div id="slateWrap" style="display:none"><canvas id="slateCanvas" style="width:100%;max-width:520px;border-radius:10px;border:1px solid var(--line2)"></canvas></div>
+</div></div>
+
 <div class="section" id="advWrap"><h3><button class="ghost mini" onclick="toggleAdv()" style="border:0;padding:0;color:var(--gold)">&#9656; Job details, instructions, research</button></h3>
 <div class="inside" id="advBody" style="display:none"><div class="grid2"><div><label>Project</label><input id="project" value="Untitled Performance"><label>Role / piece</label><input id="role" placeholder="Role, scene, song, set..."><label>Deadline / call</label><input id="due" type="datetime-local"></div><div><label>Instructions</label><textarea id="instructions" placeholder="Slate, framing, naming, office notes..."></textarea><label>Research notes</label><textarea id="research" placeholder="Project, director, casting, context..."></textarea></div></div>
 <div class="grid2" style="margin-top:10px"><div><label>Expected reader cue</label><input id="cue" value=""><label>Your line</label><textarea id="actorLine"></textarea></div><div><label>Display</label><select id="displayMode"><option>FULL_LINE</option><option selected>FIRST_PHRASE</option><option>FIRST_WORD</option><option>INITIALS</option><option>CUE_ONLY</option><option>OFF</option></select><label>Advance</label><select id="advanceMode"><option>CUE_AWARE</option><option>MANUAL</option></select><label>Recognized cue test</label><input id="heard" value=""><button class="mini" onclick="testCue()">TEST CUE</button></div></div>
@@ -286,6 +306,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 <script src="sides.js"></script>
 <script src="pdf.js"></script>
 <script src="reader.js"></script>
+<script src="qr.js"></script>
 <script>
 /* ===================== SIDES + STAGE ===================== */
 let SIDES={beats:[],speakers:[],me:'',script:[]};
@@ -435,6 +456,85 @@ async function rehydrateTakes(){
 }
 window.addEventListener('load',()=>{ setTimeout(rehydrateTakes,300); });
 
+
+/* ===== SLATE CARD =====
+   Their instructions: "do not edit video with cross-fades or labels on the actual
+   scene (labels before the scene are fine!)". So nothing is ever composited onto
+   a take. This is a card - hold it in frame before you start, or shoot it as the
+   slate file that goes alongside. */
+function slateData(){
+ return { name:actorName()||'YOUR NAME',
+          role:titleCase(SIDES.me||($('role')&&$('role').value)||''),
+          project:($('project')&&$('project').value)||'',
+          url:(($('actorURL')&&$('actorURL').value)||localStorage.getItem('actor_os_url')||'').trim() };
+}
+function drawSlate(){
+ const c=$('slateCanvas'); if(!c||!c.getContext)return;
+ const d=slateData(), W=1600, H=900;
+ c.width=W; c.height=H;
+ const x=c.getContext('2d');
+ x.fillStyle='#0d0f12'; x.fillRect(0,0,W,H);
+ x.fillStyle='#E0A23C'; x.fillRect(0,0,W,10);
+ x.fillStyle='#ECE7DC';
+ x.font='800 96px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif';
+ x.fillText(d.name.toUpperCase(), 80, 230);
+ if(d.role){ x.fillStyle='#E0A23C';
+  x.font='600 46px ui-monospace,Menlo,Consolas,monospace';
+  x.fillText(d.role.toUpperCase(), 82, 300); }
+ if(d.project){ x.fillStyle='#9aa0a8';
+  x.font='400 34px ui-monospace,Menlo,Consolas,monospace';
+  x.fillText(d.project, 82, 360); }
+ if(d.url){
+  try{
+   const m=ActorQR.make(d.url);
+   if(m){
+    const tmp=document.createElement('canvas');
+    ActorQR.draw(m,tmp,8,3);
+    const S=300;
+    x.drawImage(tmp, W-S-80, H-S-140, S, S);
+    x.fillStyle='#6b6f76';
+    x.font='400 24px ui-monospace,Menlo,Consolas,monospace';
+    x.textAlign='center';
+    x.fillText(d.url.replace(/^https?:\/\//,''), W-S/2-80, H-100);
+    x.textAlign='left';
+   }
+  }catch(e){}
+ }
+ x.fillStyle='#4a4f57';
+ x.font='400 24px ui-monospace,Menlo,Consolas,monospace';
+ x.fillText('SLATE', 82, H-90);
+ const fn=$('fnPreview');
+ if(fn&&fn.textContent!==undefined){
+  fn.textContent=takeFilename({n:1,type:'video/mp4'});
+ }
+}
+function toggleSlate(){
+ const w=$('slateWrap'); if(!w||!w.style)return;
+ const on=w.style.display==='none';
+ w.style.display=on?'block':'none';
+ if(on)drawSlate();
+}
+function downloadSlate(){
+ drawSlate();
+ const c=$('slateCanvas'); if(!c||!c.toBlob)return;
+ c.toBlob(b=>{
+  if(!b)return;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);
+  a.download=(actorName()||'SLATE').replace(/\s+/g,'_')+'_Slate_Card.png';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1200);
+ },'image/png');
+}
+window.addEventListener('load',()=>{
+ setTimeout(()=>{
+  const n=localStorage.getItem('actor_os_name'), u=localStorage.getItem('actor_os_url');
+  if(n&&$('actorName'))$('actorName').value=n;
+  if(u&&$('actorURL'))$('actorURL').value=u;
+  drawSlate();
+ },400);
+});
+
 /* ===== READER BOOTH UI ===== */
 let BOOTH={}, boothBusy=null, boothQueue=[], boothSeq=false;
 function boothKey(b){ return ActorReader.keyFor(SIDES.file||'sides', b.who, b.text); }
@@ -505,14 +605,22 @@ async function boothClear(){
    navigator.share() with a File opens the iOS share sheet, where "Save Video"
    writes to Photos - the camera roll, same as anything the phone shoots.
    Everything else falls back to a download, which lands in Files. */
+/* Match the convention Actors Access already uses, so a casting office sees the
+   naming it expects:  BRENDAN McCARTHY_Guram_Tk1
+   Their own instruction sheet asks for separate files per take, which is what
+   this produces. */
+function actorName(){
+ const n=($('actorName')&&$('actorName').value)||localStorage.getItem('actor_os_name')||'';
+ return n.trim();
+}
+function titleCase(x){ return String(x||'').toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase()); }
 function takeFilename(t){
- const proj=(($('project')&&$('project').value)||'TAKE').replace(/[^\w]+/g,'_').replace(/^_|_$/g,'');
- const role=(SIDES.me||($('role')&&$('role').value)||'').replace(/[^\w]+/g,'_').replace(/^_|_$/g,'');
- const d=new Date(t.created||Date.now());
- const stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')
-   +'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+ const who=actorName().replace(/\s+/g,' ').trim();
+ const role=titleCase(SIDES.me||($('role')&&$('role').value)||'');
  const ext=(t.type||'').includes('mp4')?'mp4':((t.type||'').includes('webm')?'webm':'mp4');
- return [proj,role,'T'+t.n,stamp].filter(Boolean).join('_')+'.'+ext;
+ const label = t.isSlate ? 'Slate' : ('Tk'+t.n);
+ const parts=[who||'TAKE', role, label].filter(Boolean);
+ return parts.join('_').replace(/[\/\\:*?"<>|]/g,'-')+'.'+ext;
 }
 function canShareVideo(blob,name){
  try{

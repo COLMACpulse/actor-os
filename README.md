@@ -125,6 +125,27 @@ preselects GURAM automatically.
 **Scanned sides have no text in them** — they are pictures of pages. The app says
 so plainly instead of returning an empty result that looks like a bug.
 
+## Slate card, not a watermark
+
+Casting instructions routinely read: *do not edit video with cross-fades or labels
+on the actual scene (labels before the scene are fine)*.
+
+So **nothing is ever composited onto a take.** Instead the app draws a slate card —
+your name, the role, the project, and an optional QR to your page. Hold it in
+frame before the scene, or save it as an image and shoot it as your slate file.
+
+The QR is generated in-app with no library, and it is a real, scannable symbol —
+verified byte-identical to a reference encoder and decoded back to the URL.
+
+## File naming
+
+Files come out the way Actors Access names them, so a casting office sees the
+convention it expects:
+
+    BRENDAN McCARTHY_Guram_Slate.mp4
+    BRENDAN McCARTHY_Guram_Tk1.mp4
+    BRENDAN McCARTHY_Guram_Tk2.mp4
+
 ## Your takes belong on your phone, not in a browser
 
 Browser storage is a cache. Safari can clear it without warning, and a web app
