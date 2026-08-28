@@ -136,9 +136,46 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 .clab{font:500 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:rgba(255,255,255,.72);text-transform:uppercase}
 @keyframes cpop{0%{transform:scale(1.5);opacity:0}22%{transform:scale(1);opacity:1}100%{transform:scale(.94);opacity:.85}}
 @media(prefers-reduced-motion:reduce){.cnum{animation:none}}
+
+/* ---- the five stages ------------------------------------------------------
+   They are a real sequence, so they are numbered. Each carries its own state,
+   which makes the row a status line rather than a set of tabs: hollow means
+   nothing there yet, amber means started, green means done.
+   The active stage gets a tally light across the top - the same signal a camera
+   gives when it is the one that is live. */
+nav{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;position:sticky;top:0;z-index:8;
+ background:var(--line);border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+ padding:0;margin:0 0 18px}
+nav button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:5px;background:var(--bg);border:0;border-radius:0;padding:14px 4px 12px;min-height:66px;
+ font-family:var(--mono);cursor:pointer;transition:background .16s,color .16s}
+nav button i{font-style:normal;font-size:9px;letter-spacing:.18em;color:var(--faint);
+ font-variant-numeric:tabular-nums;transition:color .16s}
+nav button b{font-size:11px;font-weight:600;letter-spacing:.14em;color:#8a9098;transition:color .16s}
+nav button s{text-decoration:none;width:5px;height:5px;border-radius:50%;
+ border:1px solid var(--line2);background:transparent;transition:all .2s}
+nav button s.started{border-color:var(--gold);background:var(--gold);box-shadow:0 0 7px rgba(224,162,60,.55)}
+nav button s.done{border-color:var(--go);background:var(--go);box-shadow:0 0 7px rgba(92,174,126,.5)}
+/* the tally */
+nav button::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:transparent;transition:background .16s}
+nav button.on::before{background:var(--gold)}
+nav button.on{background:var(--p1)}
+nav button.on i{color:var(--gold)}
+nav button.on b{color:#fff}
+nav button:hover b{color:var(--bone)}
+@media(max-width:420px){
+ nav button{padding:12px 2px 10px;min-height:60px}
+ nav button b{font-size:10px;letter-spacing:.09em}
+}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
-<nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="save">SAVE</button><button data-tab="send">SEND</button></nav>
+<nav>
+<button data-tab="prep" class="on"><i>01</i><b>PREP</b><s data-dot="prep"></s></button>
+<button data-tab="shoot"><i>02</i><b>SHOOT</b><s data-dot="shoot"></s></button>
+<button data-tab="cut"><i>03</i><b>CUT</b><s data-dot="cut"></s></button>
+<button data-tab="save"><i>04</i><b>SAVE</b><s data-dot="save"></s></button>
+<button data-tab="send"><i>05</i><b>SEND</b><s data-dot="send"></s></button>
+</nav>
 <section id="prep" class="panel on">
 <div class="am">Everything here is optional. PREP supports the work; it does not gate RECORD.</div>
 <div class="section"><h3>Sides</h3><div class="inside">
@@ -268,7 +305,7 @@ const _NULLEL={textContent:'',innerHTML:'',value:'',style:{},classList:{add(){},
 const $=id=>document.getElementById(id)||_NULLEL; const save=()=>{state.job={project:$('project').value,role:$('role').value,due:$('due').value,instructions:$('instructions').value,research:$('research').value};localStorage.setItem(KEY,JSON.stringify(state));$('saveState').textContent='LOCAL STATE · SAVED';renderJob();};
 ['project','role','due','instructions','research','cue','actorLine','displayMode','advanceMode','anchor','action','forbidden','posture','reader'].forEach(id=>$(id)?.addEventListener('input',()=>{save();renderPrompt()}));
 function renderJob(){$('jobTitle').textContent=$('project').value||'Untitled Performance';$('jobMeta').textContent=((state.job.role||'PERFORMANCE').toUpperCase())+' · Scene '+state.scene;$('project').focus()}
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on');if(b.dataset.tab==='cut')renderCut();if(b.dataset.tab==='save')renderSave();if(b.dataset.tab==='send')renderSend();});
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on');navState();if(b.dataset.tab==='cut')renderCut();if(b.dataset.tab==='save')renderSave();if(b.dataset.tab==='send')renderSend();});
 function toks(s){return (s||'').toLowerCase().replace(/[^a-z0-9' ]/g,' ').split(/\s+/).filter(Boolean)}
 function lev(a,b){let d=Array.from({length:a.length+1},(_,i)=>Array(b.length+1).fill(0));for(let i=0;i<=a.length;i++)d[i][0]=i;for(let j=0;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
 function lcs(a,b){let d=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=a[i-1]===b[j-1]?d[i-1][j-1]+1:Math.max(d[i-1][j],d[i][j-1]);return d[a.length][b.length]}
@@ -337,7 +374,7 @@ function flipCam(){ camFacing = camFacing==='user'?'environment':'user';
 function startMeters(){try{audioCtx=new AudioContext();let src=audioCtx.createMediaStreamSource(stream);analyser=audioCtx.createAnalyser();analyser.fftSize=1024;src.connect(analyser);let data=new Uint8Array(analyser.fftSize);const cvs=document.createElement('canvas'),ctx=cvs.getContext('2d');cvs.width=64;cvs.height=64;function loop(){analyser.getByteTimeDomainData(data);let ss=0;for(let v of data){let x=(v-128)/128;ss+=x*x}let rms=Math.sqrt(ss/data.length);$('rmsVal').textContent=rms.toFixed(2);let v=$('preview');if(v.videoWidth){ctx.drawImage(v,0,0,64,64);let p=ctx.getImageData(0,0,64,64).data,s=0;for(let i=0;i<p.length;i+=4)s+=(.2126*p[i]+.7152*p[i+1]+.0722*p[i+2])/255;let l=s/(p.length/4);$('lightVal').textContent=l.toFixed(2);$('hudTech').textContent='LIGHT '+l.toFixed(2)+' · AUDIO '+rms.toFixed(2)}raf=requestAnimationFrame(loop)}loop()}catch(e){}}
 if($('recBtn'))$('recBtn').onclick=()=>{if(!stream)return alert('Start camera first.');chunks=[];rec=new MediaRecorder(stream);rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onstop=()=>{let blob=new Blob(chunks,{type:rec.mimeType}),url=URL.createObjectURL(blob);state.takes.push({id:Date.now().toString(36),scene:state.scene,n:state.takes.filter(t=>t.scene===state.scene).length+1,status:'HOLD',bytes:blob.size,type:blob.type,url,trimIn:0,trimOut:0,created:new Date().toISOString()});localStorage.setItem(KEY,JSON.stringify(state));renderTakes();};rec.start();$('recState').textContent='RECORDING';$('recBtn').disabled=true;$('stopBtn').disabled=false};
 if($('stopBtn'))$('stopBtn').onclick=()=>{if(rec&&rec.state!=='inactive')rec.stop();$('recState').textContent='READY';$('recBtn').disabled=false;$('stopBtn').disabled=true};
-function renderTakes(){$('takeCount').textContent=state.takes.length;try{unsavedBanner();renderSave();}catch(e){}$('takeList').innerHTML=state.takes.slice().reverse().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>SCENE ${t.scene} · TAKE ${t.n}</b><small>${t.status} · ${(t.bytes/1048576).toFixed(1)} MB · ${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'}</small></div><div class="row"><button class="mini" onclick="saveTakeToDevice('${t.id}')" style="border-color:#E0A23C;color:#E0A23C">&#8681; SAVE</button><button class="mini" onclick="setTake('${t.id}','DROP')">DROP</button><button class="mini" onclick="setTake('${t.id}','HOLD')">HOLD</button><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">SURVIVOR</button></div></div>`).join('')}
+function renderTakes(){$('takeCount').textContent=state.takes.length;try{unsavedBanner();renderSave();navState();}catch(e){}$('takeList').innerHTML=state.takes.slice().reverse().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>SCENE ${t.scene} · TAKE ${t.n}</b><small>${t.status} · ${(t.bytes/1048576).toFixed(1)} MB · ${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'}</small></div><div class="row"><button class="mini" onclick="saveTakeToDevice('${t.id}')" style="border-color:#E0A23C;color:#E0A23C">&#8681; SAVE</button><button class="mini" onclick="setTake('${t.id}','DROP')">DROP</button><button class="mini" onclick="setTake('${t.id}','HOLD')">HOLD</button><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">SURVIVOR</button></div></div>`).join('')}
 function setTake(id,s){let t=state.takes.find(x=>x.id===id);if(!t)return;if(s==='SURVIVOR')state.takes.filter(x=>x.scene===t.scene).forEach(x=>{if(x.id!==id&&x.status==='SURVIVOR')x.status='HOLD'});t.status=s;localStorage.setItem(KEY,JSON.stringify(state));renderTakes();renderCut()}window.setTake=setTake;
 function renderCut(){$('cutTakes').innerHTML=state.takes.length?state.takes.map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>Scene ${t.scene} · Take ${t.n}</b><small>${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'} · ${t.status} · trim ${t.trimIn||0} / ${t.trimOut||0}</small></div><div><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">USE</button></div></div>`).join(''):'No takes yet.';let surv=state.takes.filter(t=>t.status==='SURVIVOR');state.sequence=surv.map(t=>t.id);$('timeline').innerHTML=surv.map(t=>`<div class=clip><b>SCENE ${t.scene}</b><small>TAKE ${t.n} · SURVIVOR</small></div>`).join('')||'<span class=pill>No survivor selected.</span>';}
 function applyTrim(){let t=state.takes.find(t=>t.status==='SURVIVOR');if(!t)return alert('Select a survivor first.');t.trimIn=+$('trimIn').value||0;t.trimOut=+$('trimOut').value||0;localStorage.setItem(KEY,JSON.stringify(state));renderCut()}function addSlate(){state.sequence.push('SLATE');$('timeline').insertAdjacentHTML('beforeend','<div class=clip><b>SLATE</b><small>office-specific / actor-selected</small></div>')}
@@ -424,6 +461,7 @@ function pdfProblem(file,ex,headline,advice,txt){
  h+=`<div id="pdfDiag" style="display:none;margin-top:10px"></div>`;
  window.LAST_TXT=txt||'';
  $('sidesOut').innerHTML=h;
+ try{navState();}catch(e){}
 }
 function openPasteNow(){
  $('pasteWrap').style.display='block';
@@ -549,6 +587,7 @@ function renderSides(){
   h+='</div>';
  }
  $('sidesOut').innerHTML=h;
+ try{navState();}catch(e){}
 }
 function esc2(x){return String(x==null?'':x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
 
@@ -829,6 +868,31 @@ async function checkBackground(){
    detail ${bg.busy} &middot; evenness ${bg.evenness} &middot; brightness ${bg.meanLuma} &middot; separation ${bg.separation}</div>`;
  h+=`<div style="font-size:11px;color:var(--faint);margin-top:7px">Measured from the edges of frame, assuming you are roughly centred. It cannot tell a picture frame from a doorway.</div></div>`;
  out.innerHTML=h;
+}
+
+
+/* The nav reports where the work actually is, so the row is a status line rather
+   than five tabs. Nothing here decides anything - it reflects. */
+function navState(){
+ const set=(k,cls)=>{ const el=document.querySelector('[data-dot="'+k+'"]');
+   if(el&&el.classList){ el.classList.remove('started','done'); if(cls)el.classList.add(cls); } };
+ const st=(typeof state!=='undefined'&&state)?state:null;
+ const takes=(st&&st.takes)?st.takes.filter(t=>t.status!=='DROP'):[];
+ const kept=takes.filter(t=>t.status==='SURVIVOR');
+ const saved=takes.filter(t=>t.savedToDevice);
+
+ // PREP: sides in, character picked, scene locked
+ const S=(typeof SIDES!=='undefined')?SIDES:null;
+ const sidesIn=!!(S&&S.script&&S.script.length);
+ set('prep', !sidesIn?null:(S.me&&S.ready?'done':'started'));
+ // SHOOT: anything recorded
+ set('shoot', !takes.length?null:'done');
+ // CUT: a survivor chosen
+ set('cut', !takes.length?null:(kept.length?'done':'started'));
+ // SAVE: everything off the device
+ set('save', !takes.length?null:(saved.length===takes.length?'done':(saved.length?'started':null)));
+ // SEND: a package built
+ set('send', (st&&st.sent)?'done':null);
 }
 
 /* ===== READER BOOTH UI ===== */

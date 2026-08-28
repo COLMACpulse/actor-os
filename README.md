@@ -7,6 +7,16 @@ have. No account, no server, no upload. Runs offline once installed.
 
 ---
 
+## The five stages
+
+    01 PREP   02 SHOOT   03 CUT   04 SAVE   05 SEND
+       o         o          o        o         o
+
+They are a real sequence, so they are numbered. Each carries its own state, which
+makes the row a status line rather than a set of tabs: hollow means nothing there
+yet, amber means started, green means done. The active stage gets a tally light
+across the top &mdash; the same signal a camera gives when it is the one that is live.
+
 ## What it does
 
 | stage | |
@@ -56,6 +66,16 @@ A near-miss like *"I ain't your brothers okay"* against *"I ain't your brother"*
 scores 0.76 and **holds**. It would rather stall than advance on a mis-hear.
 
 ---
+
+## The five stages
+
+    01 PREP   02 SHOOT   03 CUT   04 SAVE   05 SEND
+       o         o          o        o         o
+
+They are a real sequence, so they are numbered. Each carries its own state, which
+makes the row a status line rather than a set of tabs: hollow means nothing there
+yet, amber means started, green means done. The active stage gets a tally light
+across the top &mdash; the same signal a camera gives when it is the one that is live.
 
 ## What it does not claim
 
