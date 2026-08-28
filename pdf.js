@@ -23,6 +23,44 @@ async function inflate(bytes){
 }
 const dec=new TextDecoder('latin1');
 
+/* Build code -> character maps from every /ToUnicode CMap in the file. Modern
+   PDFs subset their fonts, so a byte in a string is a glyph index, not a letter.
+   Without this the text comes out as gibberish and no name is recognisable. */
+function hexToStr(h){
+ h=h.replace(/[^0-9a-fA-F]/g,'');
+ let s='';
+ for(let i=0;i+3<h.length||i+3===h.length;i+=4){
+  const v=parseInt(h.substr(i,4),16);
+  if(!isNaN(v))s+=String.fromCharCode(v);
+ }
+ return s;
+}
+function parseCMap(txt){
+ const map={};
+ let m;
+ const single=/beginbfchar([\s\S]*?)endbfchar/g;
+ while((m=single.exec(txt))){
+  const pr=/<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g; let q;
+  while((q=pr.exec(m[1]))) map[parseInt(q[1],16)]=hexToStr(q[2]);
+ }
+ const range=/beginbfrange([\s\S]*?)endbfrange/g;
+ while((m=range.exec(txt))){
+  const pr=/<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*(<([0-9a-fA-F]+)>|\[([\s\S]*?)\])/g; let q;
+  while((q=pr.exec(m[1]))){
+   const lo=parseInt(q[1],16), hi=parseInt(q[2],16);
+   if(q[4]!==undefined){
+    const base=parseInt(q[4],16);
+    for(let c=lo;c<=hi&&c-lo<65536;c++) map[c]=String.fromCharCode(base+(c-lo));
+   } else if(q[5]!==undefined){
+    const arr=q[5].match(/<([0-9a-fA-F]+)>/g)||[];
+    arr.forEach((a,i)=>{ map[lo+i]=hexToStr(a); });
+   }
+  }
+ }
+ return map;
+}
+
+
 function findStreams(buf){
  const s=dec.decode(buf), out=[];
  const re=/stream(\r\n|\n|\r)/g; let m;
@@ -140,7 +178,7 @@ function toLines(items){
 A.extract=async function(arrayBuffer){
  const buf=new Uint8Array(arrayBuffer);
  const streams=findStreams(buf);
- let items=[];
+ let items=[], cmap={}, sawCMap=false;
  for(const st of streams){
   let data=buf.slice(st.start,st.end);
   let bad=false;
@@ -157,11 +195,23 @@ A.extract=async function(arrayBuffer){
   }
   if(bad)continue;
   const txt=dec.decode(data);
+  if(/beginbfchar|beginbfrange/.test(txt)){ Object.assign(cmap,parseCMap(txt)); sawCMap=true; continue; }
   if(!/\bTj\b|\bTJ\b/.test(txt))continue;
   items=items.concat(readContent(txt));
  }
+ // if the raw text is mostly unprintable, the strings are glyph codes - remap
+ const rawAll=items.map(i=>i.s).join('');
+ const printable=(rawAll.match(/[\x20-\x7e]/g)||[]).length/Math.max(1,rawAll.length);
+ if(sawCMap && printable<0.72){
+  items=items.map(i=>({x:i.x,y:i.y,s:[...i.s].map(ch=>{
+    const c=ch.charCodeAt(0);
+    return (cmap[c]!==undefined)?cmap[c]:ch; }).join('')}));
+ }
  const lines=toLines(items);
- return {lines, chars:lines.reduce((n,l)=>n+l.text.length,0)};
+ const all=lines.map(l=>l.text).join('');
+ const pr=(all.match(/[\x20-\x7e]/g)||[]).length/Math.max(1,all.length);
+ return {lines, chars:all.length, printable:Math.round(pr*100)/100,
+         cmapEntries:Object.keys(cmap).length, streams:streams.length};
 };
 
 /* Turn positioned lines into the same shape the text parser produces.
