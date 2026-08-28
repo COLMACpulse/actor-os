@@ -11,7 +11,7 @@ have. No account, no server, no upload. Runs offline once installed.
 
 | stage | |
 |---|---|
-| **PREP** | Upload your sides. That is the only required step — everything else runs off them. |
+| **PREP** | Upload your sides — **PDF, text or paste**. That is the only required step; everything else runs off them. |
 | **SHOOT** | One question: *how are you shooting this?* Then the screen goes full and shows only what that answer needs. |
 | **CUT** | Takes marked DROP / HOLD / SURVIVOR. Non-destructive trim against an untouched master |
 | **SEND** | One package with a slate, the survivor take, and a delivery receipt |
@@ -76,6 +76,29 @@ silently. The app shows a red bar when that happens so it does not look like a
 crash.
 
 ---
+
+## Reading a PDF
+
+Sides arrive as PDFs, so the app reads them directly. No library — browsers ship
+`DecompressionStream`, which is the only hard part of a PDF content stream.
+
+It reads **positions, not just text**, and screenplays are positional:
+
+```
+ 108pt  INT. APARTMENT - DAY              <- action / slug
+ 266pt  JULIE                             <- character cue
+ 180pt  Nobody here saw anything.         <- dialogue
+ 216pt  (not looking up)                  <- parenthetical
+```
+
+Character cues sit at ~3.7in, dialogue at ~2.5in, action at ~1.5in. Using the
+indent makes the parse **more** reliable from a PDF than from pasted text, because
+nothing depends on guessing at capitalisation.
+
+Handles `FlateDecode`, `ASCII85Decode`, `ASCIIHexDecode` and filter chains.
+
+**Scanned sides have no text in them** — they are pictures of pages. The app says
+so plainly instead of returning an empty result that looks like a bug.
 
 ## Storage
 

@@ -96,7 +96,7 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 <div class="row" style="gap:8px;flex-wrap:wrap">
   <button onclick="document.getElementById('sidesFile').click()">CHOOSE FILE</button>
   <button class="ghost" onclick="togglePaste()">PASTE INSTEAD</button>
-  <input type="file" id="sidesFile" accept=".txt,.fountain,.md,.fdx,text/plain" style="display:none">
+  <input type="file" id="sidesFile" accept=".pdf,.txt,.fountain,.md,.fdx,application/pdf,text/plain" style="display:none">
 </div>
 <div id="pasteWrap" style="display:none;margin-top:10px">
   <textarea id="sidesText" rows="8" placeholder="JULIE&#10;Nobody here saw anything.&#10;&#10;BO&#10;I don't know what you're talking about."></textarea>
@@ -254,15 +254,36 @@ window.addEventListener('DOMContentLoaded',()=>{
 </script>
 </script>
 <script src="sides.js"></script>
+<script src="pdf.js"></script>
 <script>
 /* ===================== SIDES + STAGE ===================== */
 let SIDES={beats:[],speakers:[],me:'',script:[]};
 function togglePaste(){const w=$('pasteWrap');w.style.display=w.style.display==='none'?'block':'none';}
 function toggleAdv(){const b=$('advBody');b.style.display=b.style.display==='none'?'block':'none';}
-$('sidesFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;
- const r=new FileReader();r.onload=()=>loadSides(r.result);r.readAsText(f);e.target.value='';});
+$('sidesFile').addEventListener('change',async e=>{
+ const f=e.target.files[0]; if(!f) return; e.target.value='';
+ const isPDF = /\.pdf$/i.test(f.name) || f.type==='application/pdf';
+ if(isPDF){
+  $('sidesOut').innerHTML='<div class="am">Reading '+esc2(f.name)+'&hellip;</div>';
+  try{
+   const ex=await ActorPDF.extract(await f.arrayBuffer());
+   if(!ex.chars){
+    $('sidesOut').innerHTML='<div class="am" style="border-color:#d9694e">No text in that PDF. '+
+      'Scanned sides are pictures of pages - there are no words to read. '+
+      'Ask for a text PDF, or paste the lines in.</div>';
+    return;
+   }
+   loadSides(ActorPDF.toSides(ex.lines), f.name);
+  }catch(err){
+   $('sidesOut').innerHTML='<div class="am" style="border-color:#d9694e">Could not read that PDF: '+esc2(err.message)+'. Paste the lines in instead.</div>';
+  }
+  return;
+ }
+ const r=new FileReader(); r.onload=()=>loadSides(r.result,f.name); r.readAsText(f);
+});
 
-function loadSides(text){
+function loadSides(text,fname){
+ if(fname)SIDES.file=fname;
  if(!text||!text.trim())return;
  SIDES.beats=ActorSides.parse(text);
  SIDES.speakers=ActorSides.speakers(SIDES.beats);
