@@ -105,6 +105,15 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 <div id="sidesOut" style="margin-top:12px"></div>
 </div></div>
 
+<div class="section" id="boothWrap" style="display:none"><h3>Reader booth</h3><div class="inside">
+<div class="am" style="margin:0 0 11px">Record every line that is not yours. Your voice, your pace &mdash; the take plays these back so you have something real to work off.</div>
+<div id="boothList"></div>
+<div class="row" style="margin-top:11px;gap:8px;flex-wrap:wrap">
+  <button class="ghost" onclick="boothRunAll()">RECORD ALL IN SEQUENCE</button>
+  <button class="ghost" onclick="boothClear()">CLEAR RECORDINGS</button>
+</div>
+</div></div>
+
 <div class="section" id="advWrap"><h3><button class="ghost mini" onclick="toggleAdv()" style="border:0;padding:0;color:var(--gold)">&#9656; Job details, instructions, research</button></h3>
 <div class="inside" id="advBody" style="display:none"><div class="grid2"><div><label>Project</label><input id="project" value="Untitled Performance"><label>Role / piece</label><input id="role" placeholder="Role, scene, song, set..."><label>Deadline / call</label><input id="due" type="datetime-local"></div><div><label>Instructions</label><textarea id="instructions" placeholder="Slate, framing, naming, office notes..."></textarea><label>Research notes</label><textarea id="research" placeholder="Project, director, casting, context..."></textarea></div></div>
 <div class="grid2" style="margin-top:10px"><div><label>Expected reader cue</label><input id="cue" value=""><label>Your line</label><textarea id="actorLine"></textarea></div><div><label>Display</label><select id="displayMode"><option>FULL_LINE</option><option selected>FIRST_PHRASE</option><option>FIRST_WORD</option><option>INITIALS</option><option>CUE_ONLY</option><option>OFF</option></select><label>Advance</label><select id="advanceMode"><option>CUE_AWARE</option><option>MANUAL</option></select><label>Recognized cue test</label><input id="heard" value=""><button class="mini" onclick="testCue()">TEST CUE</button></div></div>
@@ -255,6 +264,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 </script>
 <script src="sides.js"></script>
 <script src="pdf.js"></script>
+<script src="reader.js"></script>
 <script>
 /* ===================== SIDES + STAGE ===================== */
 let SIDES={beats:[],speakers:[],me:'',script:[]};
@@ -293,7 +303,7 @@ function loadSides(text,fname){
  SIDES.me=SIDES.me||'';
  renderSides();
 }
-function pickMe(n){SIDES.me=n;SIDES.script=ActorSides.script(SIDES.beats,n);renderSides();}
+function pickMe(n){SIDES.me=n;SIDES.script=ActorSides.script(SIDES.beats,n);renderSides();boothRefresh();}
 function renderSides(){
  const sp=SIDES.speakers;
  let h='<div class="am" style="margin:0 0 10px">Which one are you?</div><div class="row" style="gap:7px;flex-wrap:wrap">';
@@ -313,6 +323,69 @@ function renderSides(){
  $('sidesOut').innerHTML=h;
 }
 function esc2(x){return String(x==null?'':x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+
+
+/* ===== READER BOOTH UI ===== */
+let BOOTH={}, boothBusy=null, boothQueue=[], boothSeq=false;
+function boothKey(b){ return ActorReader.keyFor(SIDES.file||'sides', b.who, b.text); }
+
+async function boothRefresh(){
+ if(!SIDES.me||!SIDES.script.length){ $('boothWrap').style.display='none'; return; }
+ const others=SIDES.script.filter(b=>!b.mine);
+ if(!others.length){ $('boothWrap').style.display='none'; return; }
+ $('boothWrap').style.display='';
+ const have=await ActorReader.all();
+ BOOTH={}; have.forEach(c=>BOOTH[c.id]=c);
+ const done=others.filter(b=>BOOTH[boothKey(b)]).length;
+ let h=`<div class="take" style="margin:0 0 11px"><div><b>${done} of ${others.length} recorded</b>
+   <small>${done===others.length?'Scene partner is ready.':'Scene partner needs all of them.'}</small></div>
+   <span class="pill">${done===others.length?'READY':'INCOMPLETE'}</span></div>`;
+ h+='<div style="display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden">';
+ others.forEach((b,i)=>{
+  const k=boothKey(b), got=BOOTH[k], busy=boothBusy===k;
+  h+=`<div style="background:var(--p1);padding:10px 12px;display:flex;gap:10px;align-items:flex-start">
+    <div style="flex:1;min-width:0">
+      <b style="font-size:9.5px;letter-spacing:.14em;color:var(--gold)">${esc2(b.who)}</b>
+      <div style="font-size:12.5px;margin-top:3px">${esc2(b.text)}</div>
+      ${got?`<small style="color:var(--go)">recorded${got.dur?' · '+got.dur.toFixed(1)+'s':''}</small>`:''}
+    </div>
+    <div style="display:flex;gap:6px;flex:0 0 auto">
+      ${got?`<button class="mini" onclick="boothPlay('${k}')">&#9654;</button>`:''}
+      <button class="mini ${busy?'':'ghost'}" onclick="boothToggle('${k}',${i})">${busy?'&#9632; STOP':(got?'REDO':'&#9679; REC')}</button>
+    </div></div>`;
+ });
+ h+='</div>';
+ $('boothList').innerHTML=h;
+}
+async function boothToggle(k,i){
+ if(boothBusy===k){
+  const blob=await ActorReader.stop();
+  const dur=blob?await ActorReader.duration(blob):0;
+  if(blob&&blob.size) await ActorReader.put(k,blob,{dur:dur});
+  boothBusy=null; await boothRefresh();
+  if(boothSeq) boothNext();
+  return;
+ }
+ if(boothBusy){ await ActorReader.stop(); boothBusy=null; }
+ try{ await ActorReader.start(); boothBusy=k; await boothRefresh(); }
+ catch(e){ alert('Microphone unavailable: '+e.message); }
+}
+async function boothPlay(k){ const c=BOOTH[k]; if(c) ActorReader.play(c.blob); }
+async function boothRunAll(){
+ boothQueue=SIDES.script.filter(b=>!b.mine).map(b=>boothKey(b));
+ boothSeq=true; boothNext();
+}
+function boothNext(){
+ const k=boothQueue.shift();
+ if(!k){ boothSeq=false; ActorReader.disarm(); toast&&toast('Reader booth complete'); return; }
+ boothToggle(k);
+}
+async function boothClear(){
+ if(!confirm('Delete every recorded reader line?'))return;
+ const all=await ActorReader.all();
+ for(const c of all) await ActorReader.del(c.id);
+ await boothRefresh();
+}
 
 /* ---------- the stage ---------- */
 let MODE=null, sIdx=0, sRecOn=false, sRecorder=null, sChunks=[], sT0=0, sTimer=null, sCoachT=null, sSpeak=null;
@@ -344,7 +417,7 @@ async function openStage(){
 function exitStage(){
  if(sRecOn) stageRec();
  clearInterval(sTimer); clearTimeout(sCoachT); sTimer=sCoachT=null;
- try{ if(sSpeak) speechSynthesis.cancel(); }catch(e){}
+ try{ ActorReader.stopPlay(); }catch(e){}
  try{ if(window.PC&&PC.stop)PC.stop(); }catch(e){}
  const v=$('stageVid'); if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null;}
  try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
@@ -379,11 +452,14 @@ function stageStep(d){ sIdx=Math.max(0,Math.min(SIDES.script.length-1,sIdx+d)); 
  if(MODE==='PARTNER'&&!SIDES.script[sIdx].mine) speakPartner(); }
 function speakPartner(){
  const b=SIDES.script[sIdx]; if(!b||b.mine)return;
- try{ speechSynthesis.cancel();
-  sSpeak=new SpeechSynthesisUtterance(b.text); sSpeak.rate=.95;
-  sSpeak.onend=()=>{ if(MODE==='PARTNER') stageStep(1); };
-  speechSynthesis.speak(sSpeak);
- }catch(e){}
+ const k=boothKey(b), c=BOOTH[k];
+ if(!c){
+  // no recording for this line - say so rather than substituting a robot
+  $('sText').innerHTML=`<div class="sWho">${esc2(b.who)}</div>
+    <div class="sCue" style="color:#E0A23C">not recorded &middot; tap &#9654; to step past</div>`;
+  return;
+ }
+ ActorReader.play(c.blob, ()=>{ if(MODE==='PARTNER') stageStep(1); });
 }
 function stageRec(){
  const btn=$('sRec');

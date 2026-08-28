@@ -21,8 +21,14 @@ have. No account, no server, no upload. Runs offline once installed.
 **With a reader** — someone off camera is reading with you. The screen is the frame
 and a record button. Nothing else.
 
-**Scene partner** — the app reads the other part out loud from your sides and waits
-for you. Your line is never shown; you are acting, not reading.
+**Scene partner** — **you record every other character yourself**, in PREP, in your
+own voice at your own pace. The take plays those back and hands you the floor.
+
+No synthetic voice. A robot reader gives you nothing to play against — your own
+reading carries the rhythm and the intention you actually want to work off. The
+actor is the machine.
+
+Your line is never shown in this mode. You are acting, not reading.
 
 **Teleprompter** — your lines on screen at whatever level you want.
 
@@ -76,6 +82,15 @@ silently. The app shows a red bar when that happens so it does not look like a
 crash.
 
 ---
+
+## Reader booth
+
+After you pick your character, PREP lists every line that is not yours with a
+record button. Record them once; they are stored against the content of the line,
+so re-uploading the same sides keeps the recordings.
+
+If a line has no recording the take says **"not recorded"** rather than
+substituting a machine voice.
 
 ## Reading a PDF
 
