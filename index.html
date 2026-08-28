@@ -119,8 +119,8 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 .chipx2:hover{color:#d9694e}
 .chip.on .chipx2{border-left-color:rgba(224,162,60,.4)}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
-<div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · No deadline · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
-<nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="send">SEND</button></nav>
+<div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
+<nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="save">SAVE</button><button data-tab="send">SEND</button></nav>
 <section id="prep" class="panel on">
 <div class="am">Everything here is optional. PREP supports the work; it does not gate RECORD.</div>
 <div class="section"><h3>Sides</h3><div class="inside">
@@ -167,7 +167,7 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 </div></div>
 
 <div class="section" id="advWrap"><h3><button class="ghost mini" onclick="toggleAdv()" style="border:0;padding:0;color:var(--gold)">&#9656; Job details, instructions, research</button></h3>
-<div class="inside" id="advBody" style="display:none"><div class="grid2"><div><label>Project</label><input id="project" value="Untitled Performance"><label>Role / piece</label><input id="role" placeholder="Role, scene, song, set..."><label>Deadline / call</label><input id="due" type="datetime-local"></div><div><label>Instructions</label><textarea id="instructions" placeholder="Slate, framing, naming, office notes..."></textarea><label>Research notes</label><textarea id="research" placeholder="Project, director, casting, context..."></textarea></div></div>
+<div class="inside" id="advBody" style="display:none"><div class="grid2"><div><label>Project</label><input id="project" value="Untitled Performance"><label>Role / piece</label><input id="role" placeholder="Role, scene, song, set..."></div><div><label>Instructions</label><textarea id="instructions" placeholder="Slate, framing, naming, office notes..."></textarea><label>Research notes</label><textarea id="research" placeholder="Project, director, casting, context..."></textarea></div></div>
 <div class="grid2" style="margin-top:10px"><div><label>Expected reader cue</label><input id="cue" value=""><label>Your line</label><textarea id="actorLine"></textarea></div><div><label>Display</label><select id="displayMode"><option>FULL_LINE</option><option selected>FIRST_PHRASE</option><option>FIRST_WORD</option><option>INITIALS</option><option>CUE_ONLY</option><option>OFF</option></select><label>Advance</label><select id="advanceMode"><option>CUE_AWARE</option><option>MANUAL</option></select><label>Recognized cue test</label><input id="heard" value=""><button class="mini" onclick="testCue()">TEST CUE</button></div></div>
 <div class="take"><div><b id="displayPreview"></b><small id="cueResult">Cue engine standing by.</small></div><span class="pill">MEMORIZER + CUE ENGINE</span></div>
 </div></div>
@@ -211,6 +211,18 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 </section>
 <section id="cut" class="panel"><div class="am">Actor Cut Room rules: DROP / HOLD / SURVIVOR. One survivor per scene. The software does not score acting.</div><div id="unsavedBar" class="unsaved"></div>
 <div class="section"><h3>Takes</h3><div class="inside" id="cutTakes"></div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="grid2"><div><label>Trim in (sec)</label><input id="trimIn" type="number" step=".1" value="0"></div><div><label>Trim out (sec)</label><input id="trimOut" type="number" step=".1" value="0"></div></div><div class="row"><button onclick="applyTrim()">APPLY TO SURVIVOR</button><button onclick="addSlate()">+ SLATE</button></div></div></div></section>
+<section id="save" class="panel">
+<div class="am">Get the performance onto this phone. Browser storage is a cache &mdash; it can be cleared without warning. A take that only lives in here is not saved.</div>
+<div class="section"><h3>Takes</h3><div class="inside">
+  <div id="saveList"></div>
+  <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px">
+    <button onclick="saveAllTakes()">SAVE EVERYTHING NOT YET SAVED</button>
+  </div>
+</div></div>
+<div class="section"><h3>How they will be named</h3><div class="inside">
+  <div id="namePreview" class="am" style="margin:0"></div>
+</div></div>
+</section>
 <section id="send" class="panel"><div class="am">One master, purpose-built derivatives. Never compress the compressed copy.</div><div class="section"><h3>Destination Engine</h3><div class="inside"><div class="dest" id="destinations"></div><div id="sendCheck" class="take" style="margin-top:10px"></div><div class="row" style="margin-top:10px"><button class="primary" onclick="preparePackage()">PREPARE PACKAGE</button><button onclick="sharePackage()">SHARE / EXPORT</button></div></div></div><div class="section"><h3>Delivery + Archive Ledger</h3><div class="inside"><div class="receipt" id="receipt">No package prepared.</div></div></div></section>
 <div class="bottom"><span>AMOAM UNDER THE HOOD</span><span>PROJECT HUB BRIDGE · OPTIONAL / FUTURE</span></div></div>
 <script>
@@ -220,9 +232,8 @@ const _NULLEL={textContent:'',innerHTML:'',value:'',style:{},classList:{add(){},
  addEventListener(){},setAttribute(){},getBoundingClientRect(){return{width:0,height:0}}};
 const $=id=>document.getElementById(id)||_NULLEL; const save=()=>{state.job={project:$('project').value,role:$('role').value,due:$('due').value,instructions:$('instructions').value,research:$('research').value};localStorage.setItem(KEY,JSON.stringify(state));$('saveState').textContent='LOCAL STATE · SAVED';renderJob();};
 ['project','role','due','instructions','research','cue','actorLine','displayMode','advanceMode','anchor','action','forbidden','posture','reader'].forEach(id=>$(id)?.addEventListener('input',()=>{save();renderPrompt()}));
-function renderJob(){$('jobTitle').textContent=$('project').value||'Untitled Performance';$('jobMeta').textContent=((state.job.role||'PERFORMANCE').toUpperCase())+' · '+(state.job.due?new Date(state.job.due).toLocaleString():'No deadline')+' · Scene '+state.scene}
-function editJob(){document.querySelector('[data-tab=prep]').click();$('project').focus()}
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on');if(b.dataset.tab==='cut')renderCut();if(b.dataset.tab==='send')renderSend();});
+function renderJob(){$('jobTitle').textContent=$('project').value||'Untitled Performance';$('jobMeta').textContent=((state.job.role||'PERFORMANCE').toUpperCase())+' · Scene '+state.scene;$('project').focus()}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.panel').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.tab).classList.add('on');if(b.dataset.tab==='cut')renderCut();if(b.dataset.tab==='save')renderSave();if(b.dataset.tab==='send')renderSend();});
 function toks(s){return (s||'').toLowerCase().replace(/[^a-z0-9' ]/g,' ').split(/\s+/).filter(Boolean)}
 function lev(a,b){let d=Array.from({length:a.length+1},(_,i)=>Array(b.length+1).fill(0));for(let i=0;i<=a.length;i++)d[i][0]=i;for(let j=0;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
 function lcs(a,b){let d=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=a[i-1]===b[j-1]?d[i-1][j-1]+1:Math.max(d[i-1][j],d[i][j-1]);return d[a.length][b.length]}
@@ -289,7 +300,7 @@ function flipCam(){ camFacing = camFacing==='user'?'environment':'user';
 function startMeters(){try{audioCtx=new AudioContext();let src=audioCtx.createMediaStreamSource(stream);analyser=audioCtx.createAnalyser();analyser.fftSize=1024;src.connect(analyser);let data=new Uint8Array(analyser.fftSize);const cvs=document.createElement('canvas'),ctx=cvs.getContext('2d');cvs.width=64;cvs.height=64;function loop(){analyser.getByteTimeDomainData(data);let ss=0;for(let v of data){let x=(v-128)/128;ss+=x*x}let rms=Math.sqrt(ss/data.length);$('rmsVal').textContent=rms.toFixed(2);let v=$('preview');if(v.videoWidth){ctx.drawImage(v,0,0,64,64);let p=ctx.getImageData(0,0,64,64).data,s=0;for(let i=0;i<p.length;i+=4)s+=(.2126*p[i]+.7152*p[i+1]+.0722*p[i+2])/255;let l=s/(p.length/4);$('lightVal').textContent=l.toFixed(2);$('hudTech').textContent='LIGHT '+l.toFixed(2)+' · AUDIO '+rms.toFixed(2)}raf=requestAnimationFrame(loop)}loop()}catch(e){}}
 if($('recBtn'))$('recBtn').onclick=()=>{if(!stream)return alert('Start camera first.');chunks=[];rec=new MediaRecorder(stream);rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onstop=()=>{let blob=new Blob(chunks,{type:rec.mimeType}),url=URL.createObjectURL(blob);state.takes.push({id:Date.now().toString(36),scene:state.scene,n:state.takes.filter(t=>t.scene===state.scene).length+1,status:'HOLD',bytes:blob.size,type:blob.type,url,trimIn:0,trimOut:0,created:new Date().toISOString()});localStorage.setItem(KEY,JSON.stringify(state));renderTakes();};rec.start();$('recState').textContent='RECORDING';$('recBtn').disabled=true;$('stopBtn').disabled=false};
 if($('stopBtn'))$('stopBtn').onclick=()=>{if(rec&&rec.state!=='inactive')rec.stop();$('recState').textContent='READY';$('recBtn').disabled=false;$('stopBtn').disabled=true};
-function renderTakes(){$('takeCount').textContent=state.takes.length;try{unsavedBanner();}catch(e){}$('takeList').innerHTML=state.takes.slice().reverse().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>SCENE ${t.scene} · TAKE ${t.n}</b><small>${t.status} · ${(t.bytes/1048576).toFixed(1)} MB · ${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'}</small></div><div class="row"><button class="mini" onclick="saveTakeToDevice('${t.id}')" style="border-color:#E0A23C;color:#E0A23C">&#8681; SAVE</button><button class="mini" onclick="setTake('${t.id}','DROP')">DROP</button><button class="mini" onclick="setTake('${t.id}','HOLD')">HOLD</button><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">SURVIVOR</button></div></div>`).join('')}
+function renderTakes(){$('takeCount').textContent=state.takes.length;try{unsavedBanner();renderSave();}catch(e){}$('takeList').innerHTML=state.takes.slice().reverse().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>SCENE ${t.scene} · TAKE ${t.n}</b><small>${t.status} · ${(t.bytes/1048576).toFixed(1)} MB · ${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'}</small></div><div class="row"><button class="mini" onclick="saveTakeToDevice('${t.id}')" style="border-color:#E0A23C;color:#E0A23C">&#8681; SAVE</button><button class="mini" onclick="setTake('${t.id}','DROP')">DROP</button><button class="mini" onclick="setTake('${t.id}','HOLD')">HOLD</button><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">SURVIVOR</button></div></div>`).join('')}
 function setTake(id,s){let t=state.takes.find(x=>x.id===id);if(!t)return;if(s==='SURVIVOR')state.takes.filter(x=>x.scene===t.scene).forEach(x=>{if(x.id!==id&&x.status==='SURVIVOR')x.status='HOLD'});t.status=s;localStorage.setItem(KEY,JSON.stringify(state));renderTakes();renderCut()}window.setTake=setTake;
 function renderCut(){$('cutTakes').innerHTML=state.takes.length?state.takes.map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>Scene ${t.scene} · Take ${t.n}</b><small>${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'} · ${t.status} · trim ${t.trimIn||0} / ${t.trimOut||0}</small></div><div><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">USE</button></div></div>`).join(''):'No takes yet.';let surv=state.takes.filter(t=>t.status==='SURVIVOR');state.sequence=surv.map(t=>t.id);$('timeline').innerHTML=surv.map(t=>`<div class=clip><b>SCENE ${t.scene}</b><small>TAKE ${t.n} · SURVIVOR</small></div>`).join('')||'<span class=pill>No survivor selected.</span>';}
 function applyTrim(){let t=state.takes.find(t=>t.status==='SURVIVOR');if(!t)return alert('Select a survivor first.');t.trimIn=+$('trimIn').value||0;t.trimOut=+$('trimOut').value||0;localStorage.setItem(KEY,JSON.stringify(state));renderCut()}function addSlate(){state.sequence.push('SLATE');$('timeline').insertAdjacentHTML('beforeend','<div class=clip><b>SLATE</b><small>office-specific / actor-selected</small></div>')}
@@ -630,6 +641,54 @@ function activeScript(){
  if(!SIDES.script.length)return [];
  if(!rangeActive())return SIDES.script;
  return SIDES.script.filter((b,i)=>inRange(i));
+}
+
+
+/* ===== SAVE =====
+   Its own step, because it is its own decision. CUT is which take. SAVE is
+   getting that take out of a browser and onto the phone, where it survives. */
+function renderSave(){
+ const el=$('saveList'); if(!el||el===_NULLEL)return;
+ const takes=(state.takes||[]).filter(t=>t.status!=='DROP');
+ if(!takes.length){
+  el.innerHTML='<div class="am" style="margin:0">Nothing shot yet. Takes show up here after you record.</div>';
+  const np=$('namePreview'); if(np)np.innerHTML='';
+  return;
+ }
+ const unsaved=takes.filter(t=>!t.savedToDevice).length;
+ let h=`<div class="take" style="margin:0 0 11px"><div>
+   <b>${takes.length-unsaved} of ${takes.length} saved to this phone</b>
+   <small>${unsaved?unsaved+' still only in the browser':'All of them are on the device.'}</small></div>
+   <span class="pill" style="${unsaved?'':'color:#5cae7e;border-color:#5cae7e'}">${unsaved?'INCOMPLETE':'SAFE'}</span></div>`;
+ h+='<div style="display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden">';
+ takes.forEach(t=>{
+  h+=`<div style="background:var(--p1);padding:11px 13px;display:flex;gap:11px;align-items:center">
+    <div style="flex:1;min-width:0">
+      <b style="font-size:13px">${t.isSlate?'Slate':'Take '+t.n}</b>
+      <div style="font-size:11px;color:var(--faint);margin-top:3px">
+        ${t.secs||0}s &middot; ${(t.bytes/1048576).toFixed(1)} MB &middot; ${t.status}</div>
+      <div style="font-size:11px;margin-top:3px;color:${t.savedToDevice?'#5cae7e':'#E0A23C'}">
+        ${t.savedToDevice?'saved to phone':'browser only'}</div>
+    </div>
+    <button class="mini" onclick="playTake('${t.id}')">&#9654;</button>
+    <button class="${t.savedToDevice?'mini ghost':'mini'}" onclick="saveTakeToDevice('${t.id}')"
+      style="${t.savedToDevice?'':'border-color:#E0A23C;color:#E0A23C'}">${t.savedToDevice?'SAVE AGAIN':'&#8681; SAVE'}</button>
+  </div>`;
+ });
+ h+='</div>';
+ el.innerHTML=h;
+ const np=$('namePreview');
+ if(np) np.innerHTML=takes.map(t=>'<div style="font-family:var(--mono);font-size:11.5px;color:var(--mut)">'+esc2(takeFilename(t))+'</div>').join('');
+}
+function playTake(id){
+ const t=(state.takes||[]).find(x=>x.id===id); if(!t||!t.url)return;
+ const w=document.createElement('div'); w.className='review'; w.id='takeReview';
+ w.innerHTML=`<div class="rv"><video src="${t.url}" controls autoplay playsinline></video>
+   <div class="rvbar"><div><b>${t.isSlate?'Slate':'Take '+t.n}</b><small>${t.secs||0}s</small></div>
+   <div class="rvbtns"><button class="sBtn" onclick="closeReview()">CLOSE</button>
+   <button class="sBtn savebtn" onclick="saveTakeToDevice('${t.id}')">&#8681; SAVE TO PHONE</button></div></div></div>`;
+ w.addEventListener('click',e=>{if(e.target===w)closeReview();});
+ document.body.appendChild(w);
 }
 
 /* ===== READER BOOTH UI ===== */
