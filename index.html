@@ -50,31 +50,109 @@ input,textarea{font-size:16px}
 /* respect the notch / home indicator on a real device */
 body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
 .tabs{padding-bottom:env(safe-area-inset-bottom)}
+
+.modes{display:grid;gap:11px;margin:14px 0}
+.mode{display:block;width:100%;text-align:left;background:var(--p1);border:1px solid var(--line2);
+ border-radius:12px;padding:16px 17px;cursor:pointer;font-family:inherit;min-height:44px}
+.mode:hover,.mode:focus-visible{border-color:var(--gold)}
+.mode b{display:block;font-size:16px;color:var(--ink);margin-bottom:5px;font-weight:700}
+.mode span{display:block;font-size:12.5px;color:var(--mut);line-height:1.5}
+
+/* the stage: one job, nothing else on it */
+#stage{position:fixed;inset:0;z-index:9000;background:#000;display:none;flex-direction:column}
+#stage.on{display:flex}
+#stageVid{flex:1;width:100%;height:100%;object-fit:cover;background:#000}
+.sTop{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
+ align-items:center;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;gap:10px;
+ background:linear-gradient(to bottom,rgba(0,0,0,.72),transparent)}
+.sBtn{background:rgba(0,0,0,.5);border:1px solid #ffffff30;color:#ECE7DC;border-radius:9px;
+ padding:11px 14px;font:600 12px/1 var(--mono,ui-monospace);min-height:44px;min-width:44px;cursor:pointer}
+.sBtn:hover{border-color:var(--gold)}
+.sTC{font:600 14px/1 ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.55);padding:9px 12px;border-radius:8px}
+.sBottom{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;
+ gap:12px;padding:14px 14px calc(20px + env(safe-area-inset-bottom));
+ background:linear-gradient(to top,rgba(0,0,0,.78),transparent)}
+.sRec{width:74px;height:74px;border-radius:50%;background:#d9694e;border:4px solid rgba(255,255,255,.85);cursor:pointer}
+.sRec.rec{background:#fff;border-radius:16px;width:60px;height:60px}
+/* prompter: readable at arm's length, which is the whole point */
+.sLine{max-width:min(720px,92vw);text-align:center;color:#fff;font:600 clamp(22px,5.2vw,40px)/1.32 var(--sans,system-ui);
+ text-shadow:0 2px 14px rgba(0,0,0,.9);padding:0 6px}
+.sCue{max-width:min(720px,92vw);text-align:center;color:#8FD9A0;font:500 clamp(15px,3.4vw,22px)/1.4 var(--sans,system-ui);
+ text-shadow:0 2px 12px rgba(0,0,0,.9)}
+.sWho{font:600 11px/1 ui-monospace,monospace;letter-spacing:.16em;color:var(--gold);margin-bottom:6px}
+.sNav{display:flex;gap:10px;align-items:center}
+.sCoach{position:absolute;left:14px;right:14px;bottom:calc(120px + env(safe-area-inset-bottom));
+ background:rgba(217,105,78,.92);color:#fff;border-radius:9px;padding:10px 13px;font:500 12px/1.45 var(--mono,ui-monospace);display:none}
+.sCoach.on{display:block}
+.sCoach.check{background:rgba(224,162,60,.94);color:#12100c}
+@media(orientation:landscape){.sLine{font-size:clamp(20px,3.4vw,34px)}}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · No deadline · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
 <nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="send">SEND</button></nav>
 <section id="prep" class="panel on">
 <div class="am">Everything here is optional. PREP supports the work; it does not gate RECORD.</div>
-<div class="section"><h3>Material + Instructions</h3><div class="inside grid2"><div><label>Project</label><input id="project" value="Untitled Performance"><label>Role / piece</label><input id="role" placeholder="Role, scene, song, set..."><label>Deadline / call</label><input id="due" type="datetime-local"></div><div><label>Instructions</label><textarea id="instructions" placeholder="Slate, framing, naming, office notes..."></textarea><label>Research notes</label><textarea id="research" placeholder="Project, director, casting, context..."></textarea></div></div></div>
-<div class="section"><h3>Smart Sides / Memorizer</h3><div class="inside"><div class="grid2"><div><label>Expected reader cue</label><input id="cue" value="Then tell me again."><label>Your line</label><textarea id="actorLine">I don't know what you're talking about. I wasn't even there.</textarea></div><div><label>Display</label><select id="displayMode"><option>FULL_LINE</option><option>FIRST_PHRASE</option><option>FIRST_WORD</option><option selected>INITIALS</option><option>CUE_ONLY</option><option>OFF</option></select><label>Advance</label><select id="advanceMode"><option>CUE_AWARE</option><option>VOICE_FOLLOW</option><option>MANUAL</option></select><label>Recognized cue test</label><input id="heard" value="then tell me again"><button class="mini" onclick="testCue()">TEST CUE</button></div></div><div class="take"><div><b id="displayPreview"></b><small id="cueResult">Cue engine standing by.</small></div><span class="pill">MEMORIZER + CUE ENGINE</span></div></div></div>
+<div class="section"><h3>Sides</h3><div class="inside">
+<div class="am" style="margin:0 0 11px">Upload your sides. Everything else runs off this.</div>
+<div class="row" style="gap:8px;flex-wrap:wrap">
+  <button onclick="document.getElementById('sidesFile').click()">CHOOSE FILE</button>
+  <button class="ghost" onclick="togglePaste()">PASTE INSTEAD</button>
+  <input type="file" id="sidesFile" accept=".txt,.fountain,.md,.fdx,text/plain" style="display:none">
+</div>
+<div id="pasteWrap" style="display:none;margin-top:10px">
+  <textarea id="sidesText" rows="8" placeholder="JULIE&#10;Nobody here saw anything.&#10;&#10;BO&#10;I don't know what you're talking about."></textarea>
+  <button class="mini" onclick="loadSides($('sidesText').value)">READ IT</button>
+</div>
+<div id="sidesOut" style="margin-top:12px"></div>
+</div></div>
+
+<div class="section" id="advWrap"><h3><button class="ghost mini" onclick="toggleAdv()" style="border:0;padding:0;color:var(--gold)">&#9656; Job details, instructions, research</button></h3>
+<div class="inside" id="advBody" style="display:none"><div class="grid2"><div><label>Project</label><input id="project" value="Untitled Performance"><label>Role / piece</label><input id="role" placeholder="Role, scene, song, set..."><label>Deadline / call</label><input id="due" type="datetime-local"></div><div><label>Instructions</label><textarea id="instructions" placeholder="Slate, framing, naming, office notes..."></textarea><label>Research notes</label><textarea id="research" placeholder="Project, director, casting, context..."></textarea></div></div>
+<div class="grid2" style="margin-top:10px"><div><label>Expected reader cue</label><input id="cue" value=""><label>Your line</label><textarea id="actorLine"></textarea></div><div><label>Display</label><select id="displayMode"><option>FULL_LINE</option><option selected>FIRST_PHRASE</option><option>FIRST_WORD</option><option>INITIALS</option><option>CUE_ONLY</option><option>OFF</option></select><label>Advance</label><select id="advanceMode"><option>CUE_AWARE</option><option>MANUAL</option></select><label>Recognized cue test</label><input id="heard" value=""><button class="mini" onclick="testCue()">TEST CUE</button></div></div>
+<div class="take"><div><b id="displayPreview"></b><small id="cueResult">Cue engine standing by.</small></div><span class="pill">MEMORIZER + CUE ENGINE</span></div>
+</div></div>
 <div class="section"><h3>Character Bootprint + Reader</h3><div class="inside grid2"><div><label>Anchor phrase</label><input id="anchor"><label>Playable action</label><input id="action"><label>Forbidden action</label><input id="forbidden"></div><div><label>Posture / physical anchor</label><input id="posture"><label>Reader</label><input id="reader" placeholder="Name / device voice / recorded pass"><div class="row"><button class="mini" id="readerRec">● RECORD READER PASS</button><button class="mini" id="readerStop" disabled>STOP</button></div></div></div></div>
 </section>
-<section id="shoot" class="panel"><div class="am">Camera is the work surface. Technical assistance stays quiet unless something needs attention.</div><div class="section"><h3>Capture</h3><div class="inside">
-<label class="lab">FORMAT &middot; SETS THE MASTER</label>
-<select id="captureFormat" onchange="applyFrame(this.value);if(window.PC){PC.format=this.value;}"><option value="CASTING">CASTING &middot; 16:9 landscape</option><option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
-<div class="row" style="margin-top:8px"><button class="ghost" onclick="flipCam()">FLIP CAMERA</button></div>
-<div id="coachLine" class="coach quiet">nothing needs your attention</div>
-<div class="hidden"><b id="lightVal">—</b><b id="rmsVal">—</b><b id="takeCount">0</b><b id="storageState">LOCAL</b></div>
-</div></div>
-<div class="camera"><video id="preview" autoplay muted playsinline></video><div class="hud"><div class="hudtop"><span id="hudScene">SCENE 1</span><span id="hudTech">LIGHT — · AUDIO —</span></div><div class="prompt" id="prompt"><small id="promptCue">CUE</small><span id="promptText"></span></div><div class="hudbottom"><span>ACTOR OS</span><span id="recState">READY</span></div></div></div><div class="row" style="justify-content:center;margin:10px 0"><button id="startCam">START CAMERA</button><button id="recBtn" class="primary record">● RECORD</button><button id="stopBtn" disabled>STOP</button></div><div id="takeList"></div>
-<div class="section"><h3>Slate Shot</h3><div class="inside"><div class="grid2"><div><label>Virtual pan path</label><select id="slatePath"><option>FACE → FEET → TORSO</option><option>FACE → FEET → FACE</option></select></div><div><label>Duration</label><select id="slateDuration"><option value="6">6 sec</option><option value="8" selected>8 sec</option><option value="10">10 sec</option></select></div></div><div class="row"><button onclick="slatePreview()">PREVIEW PAN MATH</button><span id="slateState" class="pill">STATIC MASTER → DERIVATIVE</span></div></div></div></section>
+<section id="shoot" class="panel">
+<div id="stage">
+  <video id="stageVid" autoplay muted playsinline></video>
+  <div class="sTop">
+    <button class="sBtn" onclick="exitStage()">&times; DONE</button>
+    <span class="sTC" id="sTC">00:00</span>
+    <button class="sBtn" onclick="stageFlip()">FLIP</button>
+  </div>
+  <div class="sCoach" id="sCoach"></div>
+  <div class="sBottom">
+    <div id="sText"></div>
+    <div class="sNav" id="sNav"></div>
+    <button class="sRec" id="sRec" onclick="stageRec()" aria-label="record"></button>
+  </div>
+</div>
+<div id="modePick">
+  <div class="am">How are you shooting this?</div>
+  <div class="modes">
+    <button class="mode" onclick="startMode('READER')">
+      <b>With a reader</b><span>Someone is off camera reading with you. Nothing on screen but the frame.</span></button>
+    <button class="mode" onclick="startMode('PARTNER')">
+      <b>Scene partner</b><span>The app reads the other part from your sides and waits for you.</span></button>
+    <button class="mode" onclick="startMode('PROMPTER')">
+      <b>Teleprompter</b><span>Your lines on screen, at whatever level you want to see them.</span></button>
+  </div>
+  <div id="modeWarn" class="am" style="border-color:#d9694e;color:#e8dcd8;display:none">
+    Scene partner and teleprompter need sides. Upload them in PREP first.</div>
+  <div class="section"><h3>Format</h3><div class="inside">
+    <select id="captureFormat" onchange="applyFrame(this.value);if(window.PC){PC.format=this.value;}"><option value="CASTING">CASTING &middot; 16:9 landscape</option><option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
+    <div class="hidden"><b id="lightVal">—</b><b id="rmsVal">—</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet">nothing needs your attention</div></div>
+  </div></div>
+</div>
 <section id="cut" class="panel"><div class="am">Actor Cut Room rules: DROP / HOLD / SURVIVOR. One survivor per scene. The software does not score acting.</div><div class="section"><h3>Takes</h3><div class="inside" id="cutTakes"></div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="grid2"><div><label>Trim in (sec)</label><input id="trimIn" type="number" step=".1" value="0"></div><div><label>Trim out (sec)</label><input id="trimOut" type="number" step=".1" value="0"></div></div><div class="row"><button onclick="applyTrim()">APPLY TO SURVIVOR</button><button onclick="addSlate()">+ SLATE</button></div></div></div></section>
 <section id="send" class="panel"><div class="am">One master, purpose-built derivatives. Never compress the compressed copy.</div><div class="section"><h3>Destination Engine</h3><div class="inside"><div class="dest" id="destinations"></div><div id="sendCheck" class="take" style="margin-top:10px"></div><div class="row" style="margin-top:10px"><button class="primary" onclick="preparePackage()">PREPARE PACKAGE</button><button onclick="sharePackage()">SHARE / EXPORT</button></div></div></div><div class="section"><h3>Delivery + Archive Ledger</h3><div class="inside"><div class="receipt" id="receipt">No package prepared.</div></div></div></section>
 <div class="bottom"><span>AMOAM UNDER THE HOOD</span><span>PROJECT HUB BRIDGE · OPTIONAL / FUTURE</span></div></div>
 <script>
 const KEY='actor_os_wired_v06';
 const state=Object.assign({job:{project:'Untitled Performance',role:'',due:'',instructions:'',research:''},takes:[],scene:1,destination:'REPRESENTATION',sequence:[],package:null},JSON.parse(localStorage.getItem(KEY)||'{}'));
-const $=id=>document.getElementById(id); const save=()=>{state.job={project:$('project').value,role:$('role').value,due:$('due').value,instructions:$('instructions').value,research:$('research').value};localStorage.setItem(KEY,JSON.stringify(state));$('saveState').textContent='LOCAL STATE · SAVED';renderJob();};
+const _NULLEL={textContent:'',innerHTML:'',value:'',style:{},classList:{add(){},remove(){},contains(){return false}},
+ addEventListener(){},setAttribute(){},getBoundingClientRect(){return{width:0,height:0}}};
+const $=id=>document.getElementById(id)||_NULLEL; const save=()=>{state.job={project:$('project').value,role:$('role').value,due:$('due').value,instructions:$('instructions').value,research:$('research').value};localStorage.setItem(KEY,JSON.stringify(state));$('saveState').textContent='LOCAL STATE · SAVED';renderJob();};
 ['project','role','due','instructions','research','cue','actorLine','displayMode','advanceMode','anchor','action','forbidden','posture','reader'].forEach(id=>$(id)?.addEventListener('input',()=>{save();renderPrompt()}));
 function renderJob(){$('jobTitle').textContent=$('project').value||'Untitled Performance';$('jobMeta').textContent=((state.job.role||'PERFORMANCE').toUpperCase())+' · '+(state.job.due?new Date(state.job.due).toLocaleString():'No deadline')+' · Scene '+state.scene}
 function editJob(){document.querySelector('[data-tab=prep]').click();$('project').focus()}
@@ -92,7 +170,7 @@ let stream=null,rec=null,chunks=[],audioCtx=null,analyser=null,raf=null;
    Format, facing and lens come from the instrument, which is the single capture
    path for the product. Falls back only if the instrument is not loaded. */
 let PC=null, camFacing='user';
-$('startCam').onclick=async()=>{
+if($('startCam'))$('startCam').onclick=async()=>{
  try{
   if(window.ActorOSPerformerCamera){
    PC=window.ActorOSPerformerCamera;
@@ -143,8 +221,8 @@ function flipCam(){ camFacing = camFacing==='user'?'environment':'user';
  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
  $('startCam').onclick(); }
 function startMeters(){try{audioCtx=new AudioContext();let src=audioCtx.createMediaStreamSource(stream);analyser=audioCtx.createAnalyser();analyser.fftSize=1024;src.connect(analyser);let data=new Uint8Array(analyser.fftSize);const cvs=document.createElement('canvas'),ctx=cvs.getContext('2d');cvs.width=64;cvs.height=64;function loop(){analyser.getByteTimeDomainData(data);let ss=0;for(let v of data){let x=(v-128)/128;ss+=x*x}let rms=Math.sqrt(ss/data.length);$('rmsVal').textContent=rms.toFixed(2);let v=$('preview');if(v.videoWidth){ctx.drawImage(v,0,0,64,64);let p=ctx.getImageData(0,0,64,64).data,s=0;for(let i=0;i<p.length;i+=4)s+=(.2126*p[i]+.7152*p[i+1]+.0722*p[i+2])/255;let l=s/(p.length/4);$('lightVal').textContent=l.toFixed(2);$('hudTech').textContent='LIGHT '+l.toFixed(2)+' · AUDIO '+rms.toFixed(2)}raf=requestAnimationFrame(loop)}loop()}catch(e){}}
-$('recBtn').onclick=()=>{if(!stream)return alert('Start camera first.');chunks=[];rec=new MediaRecorder(stream);rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onstop=()=>{let blob=new Blob(chunks,{type:rec.mimeType}),url=URL.createObjectURL(blob);state.takes.push({id:Date.now().toString(36),scene:state.scene,n:state.takes.filter(t=>t.scene===state.scene).length+1,status:'HOLD',bytes:blob.size,type:blob.type,url,trimIn:0,trimOut:0,created:new Date().toISOString()});localStorage.setItem(KEY,JSON.stringify(state));renderTakes();};rec.start();$('recState').textContent='RECORDING';$('recBtn').disabled=true;$('stopBtn').disabled=false};
-$('stopBtn').onclick=()=>{if(rec&&rec.state!=='inactive')rec.stop();$('recState').textContent='READY';$('recBtn').disabled=false;$('stopBtn').disabled=true};
+if($('recBtn'))$('recBtn').onclick=()=>{if(!stream)return alert('Start camera first.');chunks=[];rec=new MediaRecorder(stream);rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onstop=()=>{let blob=new Blob(chunks,{type:rec.mimeType}),url=URL.createObjectURL(blob);state.takes.push({id:Date.now().toString(36),scene:state.scene,n:state.takes.filter(t=>t.scene===state.scene).length+1,status:'HOLD',bytes:blob.size,type:blob.type,url,trimIn:0,trimOut:0,created:new Date().toISOString()});localStorage.setItem(KEY,JSON.stringify(state));renderTakes();};rec.start();$('recState').textContent='RECORDING';$('recBtn').disabled=true;$('stopBtn').disabled=false};
+if($('stopBtn'))$('stopBtn').onclick=()=>{if(rec&&rec.state!=='inactive')rec.stop();$('recState').textContent='READY';$('recBtn').disabled=false;$('stopBtn').disabled=true};
 function renderTakes(){$('takeCount').textContent=state.takes.length;$('takeList').innerHTML=state.takes.slice().reverse().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>SCENE ${t.scene} · TAKE ${t.n}</b><small>${t.status} · ${(t.bytes/1048576).toFixed(1)} MB</small></div><div class="row"><button class="mini" onclick="setTake('${t.id}','DROP')">DROP</button><button class="mini" onclick="setTake('${t.id}','HOLD')">HOLD</button><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">SURVIVOR</button></div></div>`).join('')}
 function setTake(id,s){let t=state.takes.find(x=>x.id===id);if(!t)return;if(s==='SURVIVOR')state.takes.filter(x=>x.scene===t.scene).forEach(x=>{if(x.id!==id&&x.status==='SURVIVOR')x.status='HOLD'});t.status=s;localStorage.setItem(KEY,JSON.stringify(state));renderTakes();renderCut()}window.setTake=setTake;
 function renderCut(){$('cutTakes').innerHTML=state.takes.length?state.takes.map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>Scene ${t.scene} · Take ${t.n}</b><small>${t.status} · trim ${t.trimIn||0} / ${t.trimOut||0}</small></div><div><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">USE</button></div></div>`).join(''):'No takes yet.';let surv=state.takes.filter(t=>t.status==='SURVIVOR');state.sequence=surv.map(t=>t.id);$('timeline').innerHTML=surv.map(t=>`<div class=clip><b>SCENE ${t.scene}</b><small>TAKE ${t.n} · SURVIVOR</small></div>`).join('')||'<span class=pill>No survivor selected.</span>';}
@@ -172,6 +250,156 @@ window.addEventListener('DOMContentLoaded',()=>{
     d.textContent='Camera is blocked: this page is not on https. Open the https:// address instead.';
     document.body.appendChild(d);
   }
+});
+</script>
+</script>
+<script src="sides.js"></script>
+<script>
+/* ===================== SIDES + STAGE ===================== */
+let SIDES={beats:[],speakers:[],me:'',script:[]};
+function togglePaste(){const w=$('pasteWrap');w.style.display=w.style.display==='none'?'block':'none';}
+function toggleAdv(){const b=$('advBody');b.style.display=b.style.display==='none'?'block':'none';}
+$('sidesFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;
+ const r=new FileReader();r.onload=()=>loadSides(r.result);r.readAsText(f);e.target.value='';});
+
+function loadSides(text){
+ if(!text||!text.trim())return;
+ SIDES.beats=ActorSides.parse(text);
+ SIDES.speakers=ActorSides.speakers(SIDES.beats);
+ if(!SIDES.speakers.length){
+  $('sidesOut').innerHTML='<div class="am" style="border-color:#d9694e">Could not find any character names. Sides usually look like <b>NAME</b> on its own line, or <b>NAME:</b> before the line.</div>';
+  return;}
+ SIDES.me=SIDES.me||'';
+ renderSides();
+}
+function pickMe(n){SIDES.me=n;SIDES.script=ActorSides.script(SIDES.beats,n);renderSides();}
+function renderSides(){
+ const sp=SIDES.speakers;
+ let h='<div class="am" style="margin:0 0 10px">Which one are you?</div><div class="row" style="gap:7px;flex-wrap:wrap">';
+ h+=sp.map(x=>`<button class="${SIDES.me===x.name?'':'ghost'}" onclick="pickMe('${x.name.replace(/'/g,"\\'")}')">${x.name} <small style="opacity:.6">${x.lines}</small></button>`).join('');
+ h+='</div>';
+ if(SIDES.me){
+  const st=ActorSides.stats(SIDES.beats,SIDES.me);
+  const mins=Math.floor(st.estSeconds/60), secs=st.estSeconds%60;
+  h+=`<div class="take" style="margin-top:12px"><div><b>${st.lines} line${st.lines===1?'':'s'} &middot; ${st.words} words</b>
+   <small>about ${mins?mins+'m ':''}${secs}s of speaking</small></div><span class="pill">${esc2(SIDES.me)}</span></div>`;
+  h+='<div style="margin-top:10px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:9px">';
+  SIDES.script.forEach(b=>{
+   h+=`<div style="padding:8px 11px;border-bottom:1px solid var(--line);font-size:12.5px;${b.mine?'':'opacity:.55'}">
+     <b style="font-size:9.5px;letter-spacing:.14em;color:${b.mine?'var(--gold)':'var(--mut)'}">${esc2(b.who)}</b><br>${esc2(b.text)}</div>`;});
+  h+='</div>';
+ }
+ $('sidesOut').innerHTML=h;
+}
+function esc2(x){return String(x==null?'':x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+
+/* ---------- the stage ---------- */
+let MODE=null, sIdx=0, sRecOn=false, sRecorder=null, sChunks=[], sT0=0, sTimer=null, sCoachT=null, sSpeak=null;
+function startMode(m){
+ if((m==='PARTNER'||m==='PROMPTER') && !SIDES.script.length){
+  $('modeWarn').style.display='block'; return; }
+ MODE=m; sIdx=0;
+ if(MODE!=='READER') sIdx=SIDES.script.findIndex(b=>b.mine);
+ if(sIdx<0)sIdx=0;
+ openStage();
+}
+async function openStage(){
+ const st=$('stage'); st.classList.add('on');
+ try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){}
+ try{ if(screen.orientation&&screen.orientation.lock){
+   await screen.orientation.lock(($('captureFormat').value==='SOCIAL')?'portrait':'landscape').catch(()=>{}); } }catch(e){}
+ try{
+  const PCa=window.ActorOSPerformerCamera;
+  if(PCa){ PCa.format=$('captureFormat').value; PCa.facing=(window.camFacing||'user');
+   let c=document.getElementById('pcSample');
+   if(!c){c=document.createElement('canvas');c.id='pcSample';c.width=160;c.height=90;c.style.display='none';document.body.appendChild(c);}
+   await PCa.open($('stageVid'), c); window.PC=PCa;
+  } else {
+   $('stageVid').srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:true});
+  }
+ }catch(e){ alert('Camera unavailable: '+e.message); return exitStage(); }
+ drawStage(); stageCoach();
+}
+function exitStage(){
+ if(sRecOn) stageRec();
+ clearInterval(sTimer); clearTimeout(sCoachT); sTimer=sCoachT=null;
+ try{ if(sSpeak) speechSynthesis.cancel(); }catch(e){}
+ try{ if(window.PC&&PC.stop)PC.stop(); }catch(e){}
+ const v=$('stageVid'); if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null;}
+ try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+ $('stage').classList.remove('on'); MODE=null;
+}
+function stageFlip(){ window.camFacing=(window.camFacing==='environment')?'user':'environment';
+ const v=$('stageVid'); if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());}
+ openStage(); }
+
+function drawStage(){
+ const T=$('sText'), N=$('sNav');
+ if(MODE==='READER'){ T.innerHTML=''; N.innerHTML=''; return; }
+ const b=SIDES.script[sIdx]; if(!b){T.innerHTML='';N.innerHTML='';return;}
+ if(MODE==='PARTNER'){
+  // the app reads the other part; your line is never shown
+  T.innerHTML = b.mine
+    ? `<div class="sCue">your line</div>`
+    : `<div class="sWho">${esc2(b.who)}</div><div class="sCue">${esc2(b.text)}</div>`;
+ } else {
+  const mode=$('displayMode').value;
+  const shown = b.mine ? displayLine(b.text, mode, b.cue) : '';
+  T.innerHTML = b.mine
+    ? `${b.cue?`<div class="sCue">${esc2(b.cue)}</div>`:''}<div class="sLine">${esc2(shown)}</div>`
+    : `<div class="sWho">${esc2(b.who)}</div><div class="sCue">${esc2(b.text)}</div>`;
+ }
+ N.innerHTML=`<button class="sBtn" onclick="stageStep(-1)">&#9664;</button>
+   <span class="sBtn" style="pointer-events:none">${sIdx+1} / ${SIDES.script.length}</span>
+   <button class="sBtn" onclick="stageStep(1)">&#9654;</button>
+   ${MODE==='PARTNER'?`<button class="sBtn" onclick="speakPartner()">&#9835; READ</button>`:''}`;
+}
+function stageStep(d){ sIdx=Math.max(0,Math.min(SIDES.script.length-1,sIdx+d)); drawStage();
+ if(MODE==='PARTNER'&&!SIDES.script[sIdx].mine) speakPartner(); }
+function speakPartner(){
+ const b=SIDES.script[sIdx]; if(!b||b.mine)return;
+ try{ speechSynthesis.cancel();
+  sSpeak=new SpeechSynthesisUtterance(b.text); sSpeak.rate=.95;
+  sSpeak.onend=()=>{ if(MODE==='PARTNER') stageStep(1); };
+  speechSynthesis.speak(sSpeak);
+ }catch(e){}
+}
+function stageRec(){
+ const btn=$('sRec');
+ if(!sRecOn){
+  const st=$('stageVid').srcObject; if(!st)return;
+  sChunks=[]; try{ sRecorder=new MediaRecorder(st, {mimeType:pickRecorderMime?pickRecorderMime():undefined}); }
+  catch(e){ sRecorder=new MediaRecorder(st); }
+  sRecorder.ondataavailable=e=>{ if(e.data.size) sChunks.push(e.data); };
+  sRecorder.onstop=()=>{ const blob=new Blob(sChunks,{type:sRecorder.mimeType||'video/mp4'});
+    window.currentBlob=blob; try{ if(window.commitTake) commitTake('HOLD'); }catch(e){} };
+  sRecorder.start(); sRecOn=true; btn.classList.add('rec'); sT0=Date.now();
+  sTimer=setInterval(()=>{ const t=Math.floor((Date.now()-sT0)/1000);
+    $('sTC').textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); },250);
+ } else {
+  try{ sRecorder&&sRecorder.state!=='inactive'&&sRecorder.stop(); }catch(e){}
+  sRecOn=false; btn.classList.remove('rec'); clearInterval(sTimer);
+ }
+}
+function stageCoach(){
+ const el=$('sCoach');
+ const tick=()=>{
+  try{
+   const f=window.PC&&PC.frameMetrics&&PC.frameMetrics();
+   const all=(window.PC&&PC.notes&&PC.notes(f))||[];
+   const n=all.filter(x=>x[0]==='FIX'||x[0]==='CHECK');
+   if(!n.length){ el.className='sCoach'; el.textContent=''; }
+   else{ const pick=n.find(x=>x[0]==='FIX')||n[0];
+     el.className='sCoach on'+(pick[0]==='CHECK'?' check':''); el.textContent=pick[1]; }
+  }catch(e){}
+  sCoachT=setTimeout(tick,1100);
+ }; tick();
+}
+document.addEventListener('keydown',e=>{
+ if(!MODE)return;
+ if(e.key==='Escape')exitStage();
+ if(e.key==='ArrowRight'||e.key===' ')stageStep(1);
+ if(e.key==='ArrowLeft')stageStep(-1);
 });
 </script>
 </body></html>

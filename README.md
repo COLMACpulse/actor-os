@@ -11,10 +11,20 @@ have. No account, no server, no upload. Runs offline once installed.
 
 | stage | |
 |---|---|
-| **PREP** | Sides, display level, capture format, lens, reader cue |
-| **SHOOT** | Camera with a prompter that follows your cue, and a technical coach that stays quiet unless something is wrong |
+| **PREP** | Upload your sides. That is the only required step — everything else runs off them. |
+| **SHOOT** | One question: *how are you shooting this?* Then the screen goes full and shows only what that answer needs. |
 | **CUT** | Takes marked DROP / HOLD / SURVIVOR. Non-destructive trim against an untouched master |
 | **SEND** | One package with a slate, the survivor take, and a delivery receipt |
+
+### Three ways to shoot, and you only ever see one
+
+**With a reader** — someone off camera is reading with you. The screen is the frame
+and a record button. Nothing else.
+
+**Scene partner** — the app reads the other part out loud from your sides and waits
+for you. Your line is never shown; you are acting, not reading.
+
+**Teleprompter** — your lines on screen at whatever level you want.
 
 ### The prompter has six levels and you pick
 
