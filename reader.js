@@ -7,15 +7,16 @@
 
    Clips live in IndexedDB keyed to the line, so they survive a reload. */
 (function(g){
-const A={}, DBN='actor_os_reader', STORE='clips';
+const A={}, DBN='actor_os_reader', STORE='clips', TAKES='takes';
 let _db=null;
 
 function open(){
  if(_db)return Promise.resolve(_db);
  return new Promise((res,rej)=>{
-  const r=indexedDB.open(DBN,1);
+  const r=indexedDB.open(DBN,2);
   r.onupgradeneeded=e=>{const d=e.target.result;
-   if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:'id'});};
+   if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:'id'});
+   if(!d.objectStoreNames.contains(TAKES))d.createObjectStore(TAKES,{keyPath:'id'});};
   r.onsuccess=e=>{_db=e.target.result;res(_db)};
   r.onerror=()=>rej(r.error);
  });
@@ -104,6 +105,29 @@ A.duration=function(blob){
   const a=new Audio(URL.createObjectURL(blob));
   a.onloadedmetadata=()=>{const d=a.duration;URL.revokeObjectURL(a.src);res(isFinite(d)?d:0)};
   a.onerror=()=>res(0);
+ });
+};
+/* --- takes: the video itself, so it survives a reload --- */
+A.putTake=async function(id,blob){
+ const db=await open();
+ return new Promise((res,rej)=>{
+  const tx=db.transaction(TAKES,'readwrite');
+  tx.objectStore(TAKES).put({id,blob,at:Date.now()});
+  tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error);
+ });
+};
+A.getTake=async function(id){
+ const db=await open();
+ return new Promise(res=>{
+  const q=db.transaction(TAKES,'readonly').objectStore(TAKES).get(id);
+  q.onsuccess=()=>res(q.result?q.result.blob:null); q.onerror=()=>res(null);
+ });
+};
+A.delTake=async function(id){
+ const db=await open();
+ return new Promise(res=>{
+  const tx=db.transaction(TAKES,'readwrite');
+  tx.objectStore(TAKES).delete(id); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false);
  });
 };
 g.ActorReader=A;

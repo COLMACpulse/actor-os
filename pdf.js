@@ -177,6 +177,12 @@ function toLines(items){
 
 A.extract=async function(arrayBuffer){
  const buf=new Uint8Array(arrayBuffer);
+ const head=dec.decode(buf.slice(0,Math.min(buf.length,4096)));
+ const all=dec.decode(buf);
+ // Studio sides are frequently permission-protected. The streams are encrypted,
+ // so anything we pull out is noise. Detect it rather than returning garbage.
+ const encrypted=/\/Encrypt\s+\d+\s+\d+\s+R|\/Encrypt\s*<</.test(all);
+ const version=(head.match(/%PDF-(\d\.\d)/)||[])[1]||'?';
  const streams=findStreams(buf);
  let items=[], cmap={}, sawCMap=false;
  for(const st of streams){
@@ -208,10 +214,12 @@ A.extract=async function(arrayBuffer){
     return (cmap[c]!==undefined)?cmap[c]:ch; }).join('')}));
  }
  const lines=toLines(items);
- const all=lines.map(l=>l.text).join('');
- const pr=(all.match(/[\x20-\x7e]/g)||[]).length/Math.max(1,all.length);
- return {lines, chars:all.length, printable:Math.round(pr*100)/100,
-         cmapEntries:Object.keys(cmap).length, streams:streams.length};
+ const allTxt=lines.map(l=>l.text).join('');
+ const pr=(allTxt.match(/[\x20-\x7e]/g)||[]).length/Math.max(1,allTxt.length);
+ return {lines, chars:allTxt.length, printable:Math.round(pr*100)/100,
+         cmapEntries:Object.keys(cmap).length, streams:streams.length,
+         encrypted:encrypted, version:version,
+         images:(all.match(/\/Subtype\s*\/Image/g)||[]).length};
 };
 
 /* Turn positioned lines into the same shape the text parser produces.

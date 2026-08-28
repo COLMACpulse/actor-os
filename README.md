@@ -13,7 +13,7 @@ have. No account, no server, no upload. Runs offline once installed.
 |---|---|
 | **PREP** | Upload your sides — **PDF, text or paste**. That is the only required step; everything else runs off them. |
 | **SHOOT** | One question: *how are you shooting this?* Then the screen goes full and shows only what that answer needs. |
-| **CUT** | Takes marked DROP / HOLD / SURVIVOR. Non-destructive trim against an untouched master |
+| **CUT** | Takes marked DROP / HOLD / SURVIVOR. Non-destructive trim against an untouched master. Video is held in IndexedDB, so takes survive a reload. |
 | **SEND** | One package with a slate, the survivor take, and a delivery receipt |
 
 ### Three ways to shoot, and you only ever see one

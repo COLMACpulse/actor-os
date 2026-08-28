@@ -86,6 +86,19 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 .sCoach.on{display:block}
 .sCoach.check{background:rgba(224,162,60,.94);color:#12100c}
 @media(orientation:landscape){.sLine{font-size:clamp(20px,3.4vw,34px)}}
+
+.review{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;padding:14px}
+.rv{width:100%;max-width:min(900px,94vw);display:flex;flex-direction:column;gap:12px}
+.rv video{width:100%;max-height:64vh;background:#000;border-radius:12px;display:block}
+.rvbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.rvbar b{display:block;font-size:15px;color:#ECE7DC}
+.rvbar small{display:block;font-size:11.5px;color:#9aa0a8;margin-top:2px}
+.rvbtns{display:flex;gap:8px;flex-wrap:wrap}
+.sBtn.keep{background:var(--gold);color:#12100c;border-color:var(--gold);font-weight:700}
+.stoast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(28px + env(safe-area-inset-bottom));
+ z-index:9600;background:rgba(20,20,24,.96);border:1px solid var(--line2);color:#ECE7DC;
+ padding:11px 16px;border-radius:10px;font:500 13px/1 var(--mono,ui-monospace);opacity:0;pointer-events:none;transition:opacity .18s}
+.stoast.on{opacity:1}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · No deadline · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
 <nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="send">SEND</button></nav>
@@ -278,9 +291,15 @@ $('sidesFile').addEventListener('change',async e=>{
  try{
   const ex=await ActorPDF.extract(await f.arrayBuffer());
   window.LAST_PDF=ex;                       // keep it so the diagnostic can show it
+  if(ex.encrypted && !ex.chars){
+   return pdfProblem(f,ex,'That PDF is protected.',
+     'Studio sides are often locked against copying, which means the text cannot be read out of the file. Open it, select all, and use PASTE INSTEAD.');
+  }
   if(!ex.chars){
+   const why = ex.images ? 'It contains '+ex.images+' image'+(ex.images>1?'s':'')+' and no text - these are pictures of pages, scanned or exported flat.'
+                         : 'There is no text layer in the file.';
    return pdfProblem(f,ex,'No text came out of that PDF.',
-     'Scanned sides are pictures of pages - there are no words in them to read. Ask for a text PDF, or paste the lines in.');
+     why+' Open it, select all, and use PASTE INSTEAD.');
   }
   if(ex.printable!==undefined && ex.printable<0.6){
    return pdfProblem(f,ex,'The text came out unreadable.',
@@ -306,10 +325,15 @@ function pdfProblem(file,ex,headline,advice,txt){
  h+=`<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
    <button class="ghost mini" onclick="pdfDiag()">SHOW WHAT IT READ</button>
    ${txt?`<button class="mini" onclick="loadSides(window.LAST_TXT,'${esc2(file.name)}')">USE IT ANYWAY</button>`:''}
-   <button class="ghost mini" onclick="togglePaste()">PASTE INSTEAD</button></div>`;
+   <button class="mini" onclick="openPasteNow()">PASTE INSTEAD</button></div>`;
  h+=`<div id="pdfDiag" style="display:none;margin-top:10px"></div>`;
  window.LAST_TXT=txt||'';
  $('sidesOut').innerHTML=h;
+}
+function openPasteNow(){
+ $('pasteWrap').style.display='block';
+ const t=$('sidesText'); t.focus();
+ t.scrollIntoView({behavior:'smooth',block:'center'});
 }
 function pdfDiag(){
  const d=$('pdfDiag'); if(d.style.display!=='none'){d.style.display='none';return;}
@@ -317,7 +341,9 @@ function pdfDiag(){
  const lines=(ex.lines||[]).slice(0,60);
  let h=`<div style="font-size:11px;color:var(--mut);margin-bottom:7px">
    ${ex.streams||0} streams &middot; ${ex.chars||0} characters &middot; ${Math.round((ex.printable||0)*100)}% readable
-   ${ex.cmapEntries?' &middot; '+ex.cmapEntries+' font map entries':''}</div>`;
+   ${ex.cmapEntries?' &middot; '+ex.cmapEntries+' font map entries':''}
+   ${ex.version?' &middot; PDF '+ex.version:''}${ex.encrypted?' &middot; <span style="color:#d9694e">protected</span>':''}
+   ${ex.images?' &middot; '+ex.images+' image'+(ex.images>1?'s':''):''}</div>`;
  h+=`<div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;font-family:var(--mono);font-size:11px">`;
  if(!lines.length) h+='<div style="padding:11px;color:var(--mut)">nothing extracted</div>';
  lines.forEach(l=>{ h+=`<div style="padding:5px 9px;border-bottom:1px solid var(--line);display:flex;gap:10px">
@@ -365,6 +391,23 @@ function renderSides(){
 }
 function esc2(x){return String(x==null?'':x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
 
+
+/* Blob URLs do not survive a reload, so rebuild them from IndexedDB on load.
+   Anything we cannot rebuild is marked rather than left as a dead link. */
+async function rehydrateTakes(){
+ if(typeof state==='undefined'||!state||!state.takes||!state.takes.length)return;
+ let lost=0;
+ for(const t of state.takes){
+  if(t.url&&t.url.startsWith('blob:')){
+   const b=await ActorReader.getTake(t.id).catch(()=>null);
+   if(b){ t.url=URL.createObjectURL(b); t.videoAvailable=true; }
+   else { t.videoAvailable=false; lost++; }
+  }
+ }
+ try{ renderTakes(); }catch(e){}
+ if(lost) console.warn(lost+' take(s) have no stored video');
+}
+window.addEventListener('load',()=>{ setTimeout(rehydrateTakes,300); });
 
 /* ===== READER BOOTH UI ===== */
 let BOOTH={}, boothBusy=null, boothQueue=[], boothSeq=false;
@@ -505,19 +548,72 @@ function speakPartner(){
 function stageRec(){
  const btn=$('sRec');
  if(!sRecOn){
-  const st=$('stageVid').srcObject; if(!st)return;
-  sChunks=[]; try{ sRecorder=new MediaRecorder(st, {mimeType:pickRecorderMime?pickRecorderMime():undefined}); }
-  catch(e){ sRecorder=new MediaRecorder(st); }
+  const st=$('stageVid').srcObject;
+  if(!st) return alert('Camera is not running.');
+  sChunks=[];
+  try{ sRecorder=new MediaRecorder(st,{mimeType:(window.pickRecorderMime?pickRecorderMime():undefined)}); }
+  catch(e){ try{ sRecorder=new MediaRecorder(st); }catch(e2){ return alert('Cannot record: '+e2.message); } }
   sRecorder.ondataavailable=e=>{ if(e.data.size) sChunks.push(e.data); };
-  sRecorder.onstop=()=>{ const blob=new Blob(sChunks,{type:sRecorder.mimeType||'video/mp4'});
-    window.currentBlob=blob; try{ if(window.commitTake) commitTake('HOLD'); }catch(e){} };
+  sRecorder.onstop=()=>{
+   const blob=new Blob(sChunks,{type:sRecorder.mimeType||'video/mp4'});
+   if(!blob.size){ stageToast('Nothing was recorded.'); return; }
+   const url=URL.createObjectURL(blob);
+   const t={ id:Date.now().toString(36), scene:state.scene,
+             n:state.takes.filter(x=>x.scene===state.scene).length+1,
+             status:'HOLD', bytes:blob.size, type:blob.type, url:url,
+             trimIn:0, trimOut:0, created:new Date().toISOString(),
+             secs:Math.round((Date.now()-sT0)/1000), mode:MODE };
+   state.takes.push(t);
+   try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+   // a blob: URL dies on reload - keep the video itself
+   ActorReader.putTake(t.id,blob).catch(()=>stageToast('Saved, but storage is full.'));
+   try{ renderTakes(); }catch(e){}
+   window.currentBlob=blob;
+   showTakeReview(t, blob);
+  };
   sRecorder.start(); sRecOn=true; btn.classList.add('rec'); sT0=Date.now();
   sTimer=setInterval(()=>{ const t=Math.floor((Date.now()-sT0)/1000);
-    $('sTC').textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); },250);
+   $('sTC').textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); },250);
  } else {
   try{ sRecorder&&sRecorder.state!=='inactive'&&sRecorder.stop(); }catch(e){}
   sRecOn=false; btn.classList.remove('rec'); clearInterval(sTimer);
  }
+}
+
+/* You stop recording and you need to know, immediately, that you got it.
+   Watch it back, keep it, bin it, or go again - without leaving the stage. */
+function showTakeReview(t, blob){
+ const w=document.createElement('div'); w.id='takeReview'; w.className='review';
+ w.innerHTML=`<div class="rv">
+   <video src="${t.url}" controls playsinline autoplay></video>
+   <div class="rvbar">
+     <div><b>Take ${t.n}</b><small>${t.secs}s &middot; ${(t.bytes/1048576).toFixed(1)} MB</small></div>
+     <div class="rvbtns">
+       <button class="sBtn" onclick="reviewDrop('${t.id}')">DROP</button>
+       <button class="sBtn" onclick="reviewAgain()">GO AGAIN</button>
+       <button class="sBtn keep" onclick="reviewKeep('${t.id}')">KEEP</button>
+     </div>
+   </div></div>`;
+ w.addEventListener('click',e=>{ if(e.target===w) reviewAgain(); });
+ document.body.appendChild(w);
+}
+function closeReview(){ const w=$('takeReview'); if(w&&w.remove) w.remove(); }
+function reviewAgain(){ closeReview(); if(MODE&&MODE!=='READER'){ sIdx=SIDES.script.findIndex(b=>b.mine); if(sIdx<0)sIdx=0; drawStage(); } }
+function reviewDrop(id){
+ const t=state.takes.find(x=>x.id===id); if(t)t.status='DROP';
+ try{ localStorage.setItem(KEY,JSON.stringify(state)); renderTakes(); }catch(e){}
+ closeReview(); stageToast('Dropped.');
+}
+function reviewKeep(id){
+ const t=state.takes.find(x=>x.id===id); if(t)t.status='SURVIVOR';
+ try{ localStorage.setItem(KEY,JSON.stringify(state)); renderTakes(); }catch(e){}
+ closeReview(); stageToast('Kept. It is in CUT.');
+}
+function stageToast(msg){
+ let el=$('stageToast');
+ if(!el||!el.parentNode){ el=document.createElement('div'); el.id='stageToast'; el.className='stoast'; document.body.appendChild(el); }
+ el.textContent=msg; el.classList.add('on');
+ clearTimeout(window._stt); window._stt=setTimeout(()=>el.classList.remove('on'),2200);
 }
 function stageCoach(){
  const el=$('sCoach');
