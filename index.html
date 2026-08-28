@@ -127,6 +127,15 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 .tpill button:first-child{padding-right:6px}
 .tpill button:last-child{padding-left:6px;border-left:1px solid var(--line2);font-size:14px}
 .tpill.on button:last-child{border-left-color:rgba(224,162,60,.35)}
+
+.countdown{position:fixed;inset:0;z-index:9700;display:flex;flex-direction:column;align-items:center;
+ justify-content:center;gap:14px;background:rgba(0,0,0,.55);cursor:pointer}
+.cnum{font:800 clamp(90px,26vw,190px)/1 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+ color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.85);animation:cpop .92s ease-out}
+.cnum.go{font-size:clamp(46px,12vw,96px);color:#E0A23C;letter-spacing:.08em}
+.clab{font:500 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:rgba(255,255,255,.72);text-transform:uppercase}
+@keyframes cpop{0%{transform:scale(1.5);opacity:0}22%{transform:scale(1);opacity:1}100%{transform:scale(.94);opacity:.85}}
+@media(prefers-reduced-motion:reduce){.cnum{animation:none}}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
 <nav><button data-tab="prep" class="on">PREP</button><button data-tab="shoot">SHOOT</button><button data-tab="cut">CUT</button><button data-tab="save">SAVE</button><button data-tab="send">SEND</button></nav>
@@ -196,9 +205,7 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 <div class="grid2" style="margin-top:10px"><div><label>Expected reader cue</label><input id="cue" value=""><label>Your line</label><textarea id="actorLine"></textarea></div><div><label>Display</label><select id="displayMode"><option>FULL_LINE</option><option selected>FIRST_PHRASE</option><option>FIRST_WORD</option><option>INITIALS</option><option>CUE_ONLY</option><option>OFF</option></select><label>Advance</label><select id="advanceMode"><option>CUE_AWARE</option><option>MANUAL</option></select><label>Recognized cue test</label><input id="heard" value=""><button class="mini" onclick="testCue()">TEST CUE</button></div></div>
 <div class="take"><div><b id="displayPreview"></b><small id="cueResult">Cue engine standing by.</small></div><span class="pill">MEMORIZER + CUE ENGINE</span></div>
 </div></div>
-<div class="section"><h3>Format</h3><div class="inside">
-    <select id="captureFormat" onchange="applyFrame(this.value);if(window.PC){PC.format=this.value;}"><option value="CASTING">CASTING &middot; 16:9 landscape</option><option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
-    <div class="hidden"><b id="lightVal">—</b><b id="rmsVal">—</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet">nothing needs your attention</div></div>
+
   </div></div>
 </div>
 <div id="stage">
@@ -206,6 +213,7 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
   <div class="sTop">
     <button class="sBtn" onclick="exitStage()">&times; DONE</button>
     <span class="sTC" id="sTC">00:00</span>
+    <button class="sBtn" onclick="stageBg()">BG</button>
     <button class="sBtn" onclick="stageFlip()">FLIP</button>
   </div>
   <div class="sCoach" id="sCoach"></div>
@@ -230,6 +238,8 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
     Scene partner and teleprompter need sides. Upload them in PREP first.</div>
   <div class="section"><h3>Format</h3><div class="inside">
     <select id="captureFormat" onchange="applyFrame(this.value);if(window.PC){PC.format=this.value;}"><option value="CASTING">CASTING &middot; 16:9 landscape</option><option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
+    <div class="row" style="margin-top:9px"><button class="ghost" onclick="checkBackground()">CHECK MY BACKGROUND</button></div>
+    <div id="bgOut" style="margin-top:10px"></div>
     <div class="hidden"><b id="lightVal">&mdash;</b><b id="rmsVal">&mdash;</b><b id="takeCount">0</b><b id="storageState">LOCAL</b><div id="coachLine" class="coach quiet">nothing needs your attention</div><div id="takeList"></div></div>
   </div></div>
 </div>
@@ -271,11 +281,11 @@ let stream=null,rec=null,chunks=[],audioCtx=null,analyser=null,raf=null;
 /* SHOOT now opens the real performer camera instead of an ad-hoc getUserMedia.
    Format, facing and lens come from the instrument, which is the single capture
    path for the product. Falls back only if the instrument is not loaded. */
-let PC=null, camFacing='user';
+let camFacing='user'; window.PC=window.PC||null;
 if($('startCam'))$('startCam').onclick=async()=>{
  try{
   if(window.ActorOSPerformerCamera){
-   PC=window.ActorOSPerformerCamera;
+   window.PC=window.ActorOSPerformerCamera;
    PC.format = ($('captureFormat')&&$('captureFormat').value) || 'CASTING';
    // the slate move spends resolution, so ask for the largest frame available
    PC.wantMax = slateMoveEnabled();
@@ -798,6 +808,29 @@ window.addEventListener('load',()=>{
  },500);
 });
 
+
+/* Background: measured, not replaced. Segmentation needs an ML model and fails on
+   hair and edges - a broken effect reads worse to casting than a plain wall, and
+   their instructions say do not edit the scene. So this reports what is wrong and
+   leaves the fixing to you, which is a thing you can actually do by moving. */
+async function checkBackground(){
+ const out=$('bgOut'); if(!out)return;
+ if(!window.PC||!window.PC.stream||!window.PC.video||!window.PC.video.videoWidth){
+  out.innerHTML='<div class="am" style="margin:0">Start the camera first &mdash; open SHOOT, pick a mode, then come back.</div>';
+  return;
+ }
+ const bg=PC.backgroundCheck();
+ if(!bg){ out.innerHTML='<div class="am" style="margin:0">Could not read the frame.</div>'; return; }
+ const notes=PC.backgroundNotes(bg);
+ const worst=notes.find(n=>n[0]==='FIX')?'#d9694e':(notes.find(n=>n[0]==='CHECK')?'#E0A23C':'#5cae7e');
+ let h=`<div class="am" style="margin:0;border-color:${worst}">`;
+ notes.forEach(n=>{ h+=`<div style="margin-bottom:6px"><b style="color:${n[0]==='FIX'?'#d9694e':(n[0]==='CHECK'?'#E0A23C':'#5cae7e')}">${n[0]}</b> ${esc2(n[1])}</div>`; });
+ h+=`<div style="font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:9px">
+   detail ${bg.busy} &middot; evenness ${bg.evenness} &middot; brightness ${bg.meanLuma} &middot; separation ${bg.separation}</div>`;
+ h+=`<div style="font-size:11px;color:var(--faint);margin-top:7px">Measured from the edges of frame, assuming you are roughly centred. It cannot tell a picture frame from a doorway.</div></div>`;
+ out.innerHTML=h;
+}
+
 /* ===== READER BOOTH UI ===== */
 let BOOTH={}, TAKESBY={}, boothBusy=null, boothQueue=[], boothSeq=false;
 function boothKey(b){ return ActorReader.keyFor(SIDES.file||'sides', b.who, b.text); }
@@ -1031,13 +1064,27 @@ async function openStage(){
  drawStage(); stageCoach();
 }
 function exitStage(){
- if(sRecOn) stageRec();
+ cancelCountdown(); if(sRecOn) stopRecording();
  clearInterval(sTimer); clearTimeout(sCoachT); sTimer=sCoachT=null;
  try{ ActorReader.stopPlay(); }catch(e){}
  try{ if(window.PC&&PC.stop)PC.stop(); }catch(e){}
  const v=$('stageVid'); if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null;}
  try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
  $('stage').classList.remove('on'); MODE=null;
+}
+/* Read the background without leaving the frame - you are standing in it. */
+function stageBg(){
+ if(!window.PC||!PC.backgroundCheck)return;
+ const bg=PC.backgroundCheck();
+ if(!bg)return stageToast('Could not read the frame.');
+ const n=PC.backgroundNotes(bg);
+ const pick=n.find(x=>x[0]==='FIX')||n.find(x=>x[0]==='CHECK')||n[0];
+ const el=$('sCoach');
+ if(el&&el.classList){
+  el.className='sCoach on'+(pick[0]==='FIX'?'':' check');
+  el.textContent=pick[0]+' \u2014 '+pick[1];
+  setTimeout(()=>{ if(el.classList)el.classList.remove('on'); },5000);
+ }
 }
 function stageFlip(){ window.camFacing=(window.camFacing==='environment')?'user':'environment';
  const v=$('stageVid'); if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());}
@@ -1079,39 +1126,72 @@ function speakPartner(){
  }
  ActorReader.play(c.blob, ()=>{ if(MODE==='PARTNER') stageStep(1); });
 }
+/* Three seconds to get set. You press record, the count runs on screen, then it
+   rolls. Nothing is captured during the count - the take starts clean at zero. */
+let sCount=null;
 function stageRec(){
  const btn=$('sRec');
+ if(sCount){ cancelCountdown(); return; }        // pressing again during the count aborts
  if(!sRecOn){
   const st=$('stageVid').srcObject;
   if(!st) return alert('Camera is not running.');
-  sChunks=[];
-  try{ sRecorder=new MediaRecorder(st,{mimeType:(window.pickRecorderMime?pickRecorderMime():undefined)}); }
-  catch(e){ try{ sRecorder=new MediaRecorder(st); }catch(e2){ return alert('Cannot record: '+e2.message); } }
-  sRecorder.ondataavailable=e=>{ if(e.data.size) sChunks.push(e.data); };
-  sRecorder.onstop=()=>{
-   const blob=new Blob(sChunks,{type:sRecorder.mimeType||'video/mp4'});
-   if(!blob.size){ stageToast('Nothing was recorded.'); return; }
-   const url=URL.createObjectURL(blob);
-   const t={ id:Date.now().toString(36), scene:state.scene,
-             n:state.takes.filter(x=>x.scene===state.scene).length+1,
-             status:'HOLD', bytes:blob.size, type:blob.type, url:url,
-             trimIn:0, trimOut:0, created:new Date().toISOString(),
-             secs:Math.round((Date.now()-sT0)/1000), mode:MODE };
-   state.takes.push(t);
-   try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
-   // a blob: URL dies on reload - keep the video itself
-   ActorReader.putTake(t.id,blob).catch(()=>stageToast('Saved, but storage is full.'));
-   try{ renderTakes(); }catch(e){}
-   window.currentBlob=blob;
-   showTakeReview(t, blob);
-  };
-  sRecorder.start(); sRecOn=true; btn.classList.add('rec'); sT0=Date.now();
-  sTimer=setInterval(()=>{ const t=Math.floor((Date.now()-sT0)/1000);
-   $('sTC').textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); },250);
- } else {
-  try{ sRecorder&&sRecorder.state!=='inactive'&&sRecorder.stop(); }catch(e){}
-  sRecOn=false; btn.classList.remove('rec'); clearInterval(sTimer);
+  runCountdown(3, ()=>beginRecording(st,btn));
+  return;
  }
+ stopRecording();
+}
+function runCountdown(secs,then){
+ const el=document.createElement('div');
+ el.id='sCountdown'; el.className='countdown';
+ document.body.appendChild(el);
+ let n=secs;
+ const draw=()=>{ el.innerHTML=`<span class="cnum">${n}</span><span class="clab">tap to cancel</span>`; };
+ draw();
+ el.addEventListener('click',cancelCountdown);
+ sCount=setInterval(()=>{
+  n--;
+  if(n<=0){
+   clearInterval(sCount); sCount=null;
+   el.innerHTML='<span class="cnum go">ACTION</span>';
+   setTimeout(()=>{ if(el.remove)el.remove(); then(); },420);
+   return;
+  }
+  draw();
+ },1000);
+}
+function cancelCountdown(){
+ if(sCount){ clearInterval(sCount); sCount=null; }
+ const el=$('sCountdown'); if(el&&el.remove)el.remove();
+}
+function beginRecording(st,btn){
+ sChunks=[];
+ try{ sRecorder=new MediaRecorder(st,{mimeType:(window.pickRecorderMime?pickRecorderMime():undefined)}); }
+ catch(e){ try{ sRecorder=new MediaRecorder(st); }catch(e2){ return alert('Cannot record: '+e2.message); } }
+ sRecorder.ondataavailable=e=>{ if(e.data.size) sChunks.push(e.data); };
+ sRecorder.onstop=()=>{
+  const blob=new Blob(sChunks,{type:sRecorder.mimeType||'video/mp4'});
+  if(!blob.size){ stageToast('Nothing was recorded.'); return; }
+  const url=URL.createObjectURL(blob);
+  const t={ id:Date.now().toString(36), scene:state.scene,
+            n:state.takes.filter(x=>x.scene===state.scene).length+1,
+            status:'HOLD', bytes:blob.size, type:blob.type, url:url,
+            trimIn:0, trimOut:0, created:new Date().toISOString(),
+            secs:Math.round((Date.now()-sT0)/1000), mode:MODE };
+  state.takes.push(t);
+  try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+  ActorReader.putTake(t.id,blob).catch(()=>stageToast('Saved, but storage is full.'));
+  try{ renderTakes(); }catch(e){}
+  window.currentBlob=blob;
+  showTakeReview(t, blob);
+ };
+ sRecorder.start(); sRecOn=true; btn.classList.add('rec'); sT0=Date.now();
+ sTimer=setInterval(()=>{ const t=Math.floor((Date.now()-sT0)/1000);
+  $('sTC').textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); },250);
+}
+function stopRecording(){
+ try{ sRecorder&&sRecorder.state!=='inactive'&&sRecorder.stop(); }catch(e){}
+ sRecOn=false; const btn=$('sRec'); if(btn&&btn.classList)btn.classList.remove('rec');
+ clearInterval(sTimer);
 }
 
 /* You stop recording and you need to know, immediately, that you got it.
