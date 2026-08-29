@@ -7,7 +7,13 @@
 <title>ACTOR OS — Mobile Field Unit</title><style>
 :root{--bg:#0d0f12;--p1:#14171c;--p2:#1b1f26;--line:#2b3038;--line2:#3a414c;--ink:#ece7dc;--mut:#9aa0a8;--faint:#646b75;--gold:#e0a23c;--go:#5cae7e;--hold:#d6794e;--bad:#d9694e;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans)}body{min-height:100vh;background-image:radial-gradient(900px 480px at 70% -12%,rgba(224,162,60,.08),transparent 60%)}button,input,textarea,select{font:inherit}button{cursor:pointer}.app{max-width:900px;margin:auto;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom)}
-header{display:grid;grid-template-columns:58px auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 2px 10px;border-bottom:1px solid var(--line)}.slatebar{width:100%;height:26px;border-radius:3px;align-self:center;opacity:.92;box-shadow:inset 0 0 0 1px #00000055}
+header{display:grid;grid-template-columns:58px auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 2px 10px;border-bottom:1px solid var(--line)}/* Checkbox rows. Without this the box inherits the text-input width rule and
+   renders full-width above its own label. Box first, text beside it. */
+.cbrow{display:flex;align-items:center;gap:10px;margin:12px 0 0;cursor:pointer}
+.cbrow input[type=checkbox]{flex:0 0 auto;width:18px;height:18px;min-width:0;margin:0;padding:0;
+ border:0;border-radius:0;background:none;accent-color:var(--gold)}
+.cbrow span{flex:0 1 auto;font:9px var(--mono);letter-spacing:.08em;color:var(--mut);text-transform:uppercase;line-height:1.3}
+.slatebar{width:100%;height:26px;border-radius:3px;align-self:center;opacity:.92;box-shadow:inset 0 0 0 1px #00000055}
 .projrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--p1)}
 .projrow label{font:600 10px/1 var(--mono);letter-spacing:.1em;color:var(--faint);flex:0 0 auto;margin:0}
 .projrow input{flex:1 1 190px;min-width:0;margin:0;background:transparent;border:0;border-bottom:1px dashed var(--line2);border-radius:0;padding:4px 2px;font-size:16px;color:var(--ink)}
