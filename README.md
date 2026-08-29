@@ -67,6 +67,15 @@ words are gone.
 
 **The system never hides text based on a readiness judgment.** You choose the level.
 
+### It waits for you to finish
+
+Turn on **LISTEN FOR MY CUE** on the stage and the scene partner waits until you
+have actually finished your line, then plays the next one &mdash; the way a reader does.
+
+Speech recognition is a browser service and is not private on every device; iOS
+may send audio to Apple. So it is **opt-in, off by default**, and tapping to advance
+never goes away.
+
 ### Cue matching that refuses to guess
 
 Confidence is `0.45·token + 0.35·coverage + 0.20·tail`.

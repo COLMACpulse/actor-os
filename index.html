@@ -178,6 +178,14 @@ nav button:hover b{color:var(--bone)}
  font:500 11.5px/1.45 var(--mono,ui-monospace);display:none}
 .prevbar.on{display:block;background:rgba(217,105,78,.94);color:#fff}
 .prevbar.on.check{background:rgba(224,162,60,.94);color:#12100c}
+
+.listen{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;
+ border-radius:9px;font:700 11px/1 var(--mono,ui-monospace);letter-spacing:.06em;
+ border:1px solid transparent;color:transparent}
+.listen.on{border-color:#ffffff30;background:rgba(0,0,0,.5);color:#8FD9A0}
+.listen.on.hold{color:#E0A23C;border-color:#E0A23C}
+.listen.on.match{color:#5cae7e;border-color:#5cae7e}
+.sBtn#listenBtn{font-size:10px;letter-spacing:.05em}
 </style></head><body><div class="app"><header><div class="sig"></div><div><h1>ACTOR OS</h1><div class="sub">MOBILE FIELD UNIT · WIRED PRODUCT v0.6</div></div><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
 <div class="job"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
 <nav>
@@ -255,6 +263,8 @@ nav button:hover b{color:var(--bone)}
     <button class="sBtn" onclick="exitStage()">&times; DONE</button>
     <span class="sTC" id="sTC">00:00</span>
     <button class="sBtn" onclick="stageBg()">BG</button>
+    <button class="sBtn" id="listenBtn" onclick="listenToggle()">LISTEN FOR MY CUE</button>
+    <span class="listen" id="sListen"></span>
     <span class="sBtn" id="stageRemote" style="display:none;pointer-events:none">&#9679; REMOTE</span>
     <button class="sBtn" onclick="stageFlip()">FLIP</button>
   </div>
@@ -1101,6 +1111,78 @@ function stopPreview(){
  if(v&&v.srcObject){ v.srcObject=null; }
 }
 
+
+/* ===== LISTENING =====
+   The scene partner waits for you to finish your line, then plays the next one -
+   the way a reader does. That is what coldRead does and it is the thing that makes
+   a solo rehearsal feel like a scene.
+
+   It runs on the cue math already in this build: 0.45 token + 0.35 coverage +
+   0.20 tail. MATCH advances. HOLD waits, because a near miss is not a finish.
+   NO MATCH keeps listening.
+
+   Speech recognition is a browser service and it is not private on every device -
+   iOS may send audio to Apple. That is why this is opt-in and off by default, and
+   why MANUAL and the tap-to-advance path are never removed. */
+let LISTEN=false, rec2=null, listenHeard='', listenPaused=false;
+
+function listenSupported(){ return !!(window.SpeechRecognition||window.webkitSpeechRecognition); }
+
+function listenStart(){
+ if(!listenSupported()) return stageToast('This browser cannot listen for cues.');
+ const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+ try{ rec2=new R(); }catch(e){ return stageToast('Could not start listening.'); }
+ rec2.continuous=true; rec2.interimResults=true; rec2.lang='en-US';
+ rec2.onresult=e=>{
+  if(listenPaused)return;
+  let txt='';
+  for(let i=e.resultIndex;i<e.results.length;i++) txt+=e.results[i][0].transcript+' ';
+  listenHeard=(listenHeard+' '+txt).trim().split(/\s+/).slice(-40).join(' ');
+  listenCheck();
+ };
+ rec2.onerror=e=>{ if(e.error==='not-allowed'){ LISTEN=false; listenUI(); stageToast('Microphone blocked for speech.'); } };
+ rec2.onend=()=>{ if(LISTEN){ try{ rec2.start(); }catch(e){} } };   // it stops on its own
+ try{ rec2.start(); LISTEN=true; }catch(e){ return stageToast('Could not start listening.'); }
+ listenUI();
+}
+function listenStop(){
+ LISTEN=false;
+ try{ if(rec2){ rec2.onend=null; rec2.stop(); } }catch(e){}
+ rec2=null; listenHeard=''; listenUI();
+}
+function listenToggle(){ LISTEN?listenStop():listenStart(); }
+
+/* Am I done with my line? Compare what was heard against the tail of it. */
+function listenCheck(){
+ if(MODE!=='PARTNER'&&MODE!=='PROMPTER')return;
+ const run=(SIDES.run||SIDES.script);
+ const b=run[sIdx];
+ if(!b||!b.mine)return;                       // only listening while it is your line
+ const r=cueConf(b.text, listenHeard);
+ listenBadge(r);
+ if(r.action==='MATCH'){
+  listenPaused=true; listenHeard='';
+  setTimeout(()=>{ listenPaused=false; }, 900);
+  stageStep(1);
+ }
+}
+function listenBadge(r){
+ const el=$('sListen');
+ if(!el||!el.classList)return;
+ if(!LISTEN){ el.className='listen'; el.textContent=''; return; }
+ const a=r?r.action:'LISTENING';
+ el.className='listen on'+(a==='HOLD'?' hold':(a==='MATCH'?' match':''));
+ el.textContent = a==='MATCH'?'\u2713' : a==='HOLD'?'HOLD' : '\u25cf';
+}
+function listenUI(){
+ const b=$('listenBtn');
+ if(b&&b.textContent!==undefined){
+  b.textContent=LISTEN?'LISTENING':'LISTEN FOR MY CUE';
+  if(b.classList)b.classList.toggle('ghost',!LISTEN);
+ }
+ listenBadge(null);
+}
+
 /* ===== READER BOOTH UI ===== */
 let BOOTH={}, TAKESBY={}, boothBusy=null, boothQueue=[], boothSeq=false;
 function boothKey(b){ return ActorReader.keyFor(SIDES.file||'sides', b.who, b.text); }
@@ -1338,6 +1420,7 @@ function exitStage(){
  cancelCountdown(); if(sRecOn) stopRecording();
  clearInterval(sTimer); clearTimeout(sCoachT); sTimer=sCoachT=null;
  try{ ActorReader.stopPlay(); }catch(e){}
+ try{ listenStop(); }catch(e){}
  try{ if(window.PC&&PC.stop)PC.stop(); }catch(e){}
  const v=$('stageVid'); if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null;}
  try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
@@ -1382,7 +1465,7 @@ function drawStage(){
    <button class="sBtn" onclick="stageStep(1)">&#9654;</button>
    ${MODE==='PARTNER'?`<button class="sBtn" onclick="speakPartner()">&#9835; READ</button>`:''}`;
 }
-function stageStep(d){ sIdx=Math.max(0,Math.min((SIDES.run||SIDES.script).length-1,sIdx+d)); drawStage();
+function stageStep(d){ listenHeard=''; sIdx=Math.max(0,Math.min((SIDES.run||SIDES.script).length-1,sIdx+d)); drawStage();
  if(MODE==='PARTNER'&&!(SIDES.run||SIDES.script)[sIdx].mine) speakPartner(); }
 function speakPartner(){
  const b=(SIDES.run||SIDES.script)[sIdx]; if(!b||b.mine)return;
