@@ -86,7 +86,15 @@ A.fromLabel=function(textOrLines){
   return null;
 };
 
-/* ---- source 2: the header block above the first slug or cue ---- */
+/* REMOVED: "the first plausible-looking line on page one".
+   Real sides open with a page of casting instructions, so that heuristic
+   happily returned things like "loud or too soft please" as the project name.
+   A title is either stated in the file or supplied by the operator. Anything
+   else is a guess wearing a confidence score, and UNKNOWN is more useful than
+   a confident wrong answer.
+
+   Kept below only so a caller that asks for it explicitly still works; it is
+   no longer part of detect(). ---- */
 A.fromHeader=function(lines,role,speakers){
   if(!Array.isArray(lines)||!lines.length) return null;
   const spk=new Set((speakers||[]).map(x=>String((x&&x.name)||x||'').toUpperCase()).filter(Boolean));
@@ -153,7 +161,6 @@ A.detect=function(o){
     ? o.lines
     : String(o.text||'').split('\n').map(t=>({text:t}));
   push(A.fromLabel(lines));
-  push(A.fromHeader(lines,o.role,o.speakers));
   push(A.fromFilename(o.filename,o.role,o.actorName));
   const seen=new Set(), cands=[];
   for(const c of out){
@@ -171,11 +178,10 @@ A.detect=function(o){
 };
 
 A.sourceLabel=function(src){
-  return {LABEL:'from the notice header',
-          HEADER:'read off the first page',
+  return {LABEL:'stated in the sides',
           FILENAME:'from the filename',
           MANUAL:'you set this',
-          UNKNOWN:'not found in the sides'}[src]||'unknown';
+          UNKNOWN:'not stated in the sides'}[src]||'unknown';
 };
 
 g.ActorTitle=A;
