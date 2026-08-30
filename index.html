@@ -29,6 +29,41 @@ header{display:grid;grid-template-columns:58px auto minmax(0,1fr) auto;gap:12px;
 .ra-said{color:#e5484d}
 .ra-extra{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:9px;
  background:rgba(90,160,255,.16);color:#7db4ff;font:10px/1.5 var(--mono)}
+/* ===== BOOTH STAGE ===== */
+#bstage{position:fixed;inset:0;z-index:9100;background:#0b0d10;display:none;flex-direction:column;
+ padding:max(14px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+#bstage.on{display:flex}
+.bsTop{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.bsTop .sBtn{background:none;border:1px solid var(--line2);color:var(--mut);border-radius:8px;
+ padding:8px 12px;font:600 11px/1 var(--mono);letter-spacing:.12em}
+.bsWho{font:11px/1 var(--mono);letter-spacing:.14em;color:var(--faint)}
+.bsTC{margin-left:auto;font:700 20px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
+.bsTC.rec{color:#ff8a80}
+.bsTC small{display:block;font:400 10px/1.6 var(--mono);color:var(--faint);text-align:right;letter-spacing:.08em}
+.bsBody{flex:1 1 auto;overflow:auto;display:flex;flex-direction:column;justify-content:center;padding:18px 0}
+.bsPrev{font:13px/1.5 var(--sans);color:var(--faint);border-left:2px solid var(--line2);
+ padding:2px 0 2px 11px;margin-bottom:20px}
+.bsPrev b{display:block;font:600 9.5px/1.8 var(--mono);letter-spacing:.14em;color:var(--mut)}
+.bsPrev.none{display:none}
+.bsWhoNow{font:700 12px/1 var(--mono);letter-spacing:.18em;color:var(--gold);margin-bottom:12px}
+.bsLine{font:600 27px/1.42 var(--sans);color:var(--ink);letter-spacing:-.01em}
+@media(max-height:620px){.bsLine{font-size:22px}}
+.bsFoot{flex:0 0 auto}
+.bsMeter{height:6px;border-radius:3px;background:#23262b;overflow:hidden;margin-bottom:14px}
+.bsMeter i{display:block;height:100%;width:0%;background:#e5484d;transition:width .08s linear}
+.bsMeter.live{background:#4a1f1c}
+.bsCtl{display:flex;gap:10px;flex-wrap:wrap}
+.bsCtl button{flex:1 1 130px;padding:17px 14px;font-size:14px}
+.bsRec{background:#e5484d!important;border-color:#e5484d!important;color:#fff!important}
+.bsDot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#fff;margin-right:9px;
+ vertical-align:-1px}
+.bsDot.live{animation:recpulse 1s infinite}
+.livebadge{position:fixed;z-index:9500;left:50%;transform:translateX(-50%);
+ top:max(6px,env(safe-area-inset-top));padding:5px 11px;border-radius:20px;
+ background:#2a1210;border:1px solid #d9694e;color:#ff8a80;
+ font:700 10px/1 var(--mono);letter-spacing:.14em;display:none;pointer-events:none;white-space:nowrap}
+.livebadge.on{display:flex;align-items:center;gap:7px}
+.lbdot{width:8px;height:8px;border-radius:50%;background:#e5484d;animation:recpulse 1s infinite}
 .projrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--p1)}
 .projrow label{font:600 10px/1 var(--mono);letter-spacing:.1em;color:var(--faint);flex:0 0 auto;margin:0}
 .projrow input{flex:1 1 190px;min-width:0;margin:0;background:transparent;border:0;border-bottom:1px dashed var(--line2);border-radius:0;padding:4px 2px;font-size:16px;color:var(--ink)}
@@ -99,7 +134,22 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
 #stageVid{flex:1;width:100%;height:100%;object-fit:cover;background:#000}
 .sTop{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
  align-items:center;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;gap:10px;
- background:linear-gradient(to bottom,rgba(0,0,0,.72),transparent)}
+ background:linear-gradient(to bottom,rgba(0,0,0,.72),transparent);
+ transition:opacity .22s ease, transform .22s ease}
+/* The controls get out of the way so the frame is the screen. One tap brings
+   them back; they never disappear while you are still setting up. */
+#stage.bare .sTop{opacity:0;transform:translateY(-14px);pointer-events:none}
+#stage.bare .sNav{opacity:0;pointer-events:none;transition:opacity .22s ease}
+.sPeek{position:absolute;top:0;left:0;right:0;height:86px;z-index:5}
+#stage.bare .sPeek{cursor:pointer}
+/* Sits to the right so it does not land under the centred live badge. */
+.sMin{position:absolute;z-index:6;right:14px;
+ top:max(8px,env(safe-area-inset-top));display:none;align-items:center;gap:8px;
+ padding:5px 12px;border-radius:20px;background:rgba(0,0,0,.55);
+ font:700 13px/1 var(--mono);letter-spacing:.1em;color:#ff8a80;
+ font-variant-numeric:tabular-nums}
+#stage.bare .sMin{display:flex}
+.sMin .lbdot{width:8px;height:8px}
 .sBtn{background:rgba(0,0,0,.5);border:1px solid #ffffff30;color:#ECE7DC;border-radius:9px;
  padding:11px 14px;font:600 12px/1 var(--mono,ui-monospace);min-height:44px;min-width:44px;cursor:pointer}
 .sBtn:hover{border-color:var(--gold)}
@@ -303,11 +353,36 @@ nav button:hover b{color:var(--bone)}
 
   </div></div>
 </div>
+<!-- ===== BOOTH STAGE =====
+     Recording a reader line is a performance, not a form field. This takes the
+     whole screen: the line you are answering above, the line you are recording
+     large, timecode, level, and the words colouring as you speak. -->
+<div id="liveBadge" class="livebadge"></div>
+<div id="bstage">
+  <div class="bsTop">
+    <button class="sBtn" onclick="bsExit()">&times; DONE</button>
+    <span class="bsWho" id="bsPos"></span>
+    <span class="bsTC" id="bsTC">0.0s</span>
+  </div>
+  <div class="bsBody">
+    <div class="bsPrev" id="bsPrev"></div>
+    <div class="bsWhoNow" id="bsWho"></div>
+    <div class="bsLine" id="bsLine"></div>
+  </div>
+  <div class="bsFoot">
+    <div class="bsMeter"><i id="bsLevel"></i></div>
+    <div class="bsCtl" id="bsCtl"></div>
+  </div>
+</div>
+
 <div id="stage">
   <video id="stageVid" autoplay muted playsinline></video>
+  <div class="sPeek" onclick="stageChrome(true)"></div>
+  <div class="sMin" id="sMin"><span class="lbdot"></span><span id="sMinTC">00:00</span></div>
   <div class="sTop">
     <button class="sBtn" onclick="exitStage()">&times; DONE</button>
     <span class="sTC" id="sTC">00:00</span>
+    <button class="sBtn" id="sCoachBtn" onclick="coachToggle()">COACH</button>
     <button class="sBtn" onclick="stageBg()">BG</button>
     <button class="sBtn" id="listenBtn" onclick="listenToggle()">LISTEN FOR MY CUE</button>
     <span class="listen" id="sListen"></span>
@@ -336,6 +411,7 @@ nav button:hover b{color:var(--bone)}
       <option value="CASTING">CASTING &middot; 16:9 landscape</option>
       <option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
     <button class="ghost" onclick="previewFlip()">FLIP</button>
+    <button class="ghost" id="coachBtn" onclick="coachToggle()">COACH</button>
     <button class="ghost" id="remoteBtn" onclick="remoteEnable()">REMOTE</button>
   </div>
   <div id="remoteState"></div>
@@ -645,7 +721,7 @@ function preparePackage(){let surv=state.takes.filter(t=>t.status==='SURVIVOR');
 async function sharePackage(){if(!state.package)return alert('Prepare package first.');let text=`ACTOR OS package ${state.package.id} · ${state.package.project} · ${profiles[state.destination][0]}`;if(navigator.share){try{await navigator.share({title:'ACTOR OS Package',text})}catch(e){}}else navigator.clipboard?.writeText(text);state.package.deliveryStatus='HANDOFF_INITIATED';localStorage.setItem(KEY,JSON.stringify(state));$('receipt').textContent=JSON.stringify(state.package,null,2)}
 if($('clipFile')) $('clipFile').addEventListener('change',function(){ importClips(this.files); this.value=''; });
 function loadState(){for(let k of ['project','role','due','instructions','research'])if(state.job[k]!=null)$(k).value=state.job[k];
- if(state.job.project==='Untitled Performance'){state.job.project='';state.job.projectSource='UNKNOWN';}renderJob();renderPrompt();renderTakes();renderSend()}loadState();
+ if(state.job.project==='Untitled Performance'){state.job.project='';state.job.projectSource='UNKNOWN';}renderJob();renderPrompt();renderTakes();renderSend();try{coachUI();}catch(e){}}loadState();
 </script>
 
 <script src="performer_camera_v08.js"></script>
@@ -1452,8 +1528,62 @@ async function previewFlip(){
  await startPreview();
 }
 let prevCoachT=null;
+/* ===== COACH =====
+   Framing and background notes are for when you are checking, not for every
+   second of every take. Off unless asked for, and when off the timers do not
+   run at all rather than running and hiding their output. */
+let COACH = localStorage.getItem('actor_os_coach')==='1';
+function coachOn(){ return COACH; }
+function coachToggle(){
+ COACH=!COACH;
+ try{ localStorage.setItem('actor_os_coach', COACH?'1':'0'); }catch(e){}
+ coachUI();
+ if(COACH){ try{ previewCoach(); }catch(e){} try{ if(MODE) stageCoach(); }catch(e){} }
+ else {
+  if(prevCoachT){clearTimeout(prevCoachT);prevCoachT=null;}
+  if(sCoachT){clearTimeout(sCoachT);sCoachT=null;}
+  const bar=$('prevBar'); if(bar&&bar.classList){ bar.className='prevbar'; bar.textContent=''; }
+  const sc=$('sCoach'); if(sc&&sc.classList){ sc.className='sCoach'; sc.textContent=''; }
+ }
+}
+/* ===== CAPTURE INDICATOR =====
+   One badge, driven by the actual live tracks rather than by app state, so it
+   cannot say OFF while the device is still listening. */
+function liveCapture(){
+ let mic=false, cam=false;
+ try{ mic=!!(ActorReader.armed&&ActorReader.armed()); }catch(e){}
+ try{
+  const st=window.PC&&PC.stream;
+  cam=!!(st && st.getVideoTracks().some(t=>t.readyState==='live'));
+  if(st && st.getAudioTracks().some(t=>t.readyState==='live')) mic=true;
+ }catch(e){}
+ try{
+  const sv=$('stageVid'); if(sv&&sv!==_NULLEL&&sv.srcObject){
+   if(sv.srcObject.getVideoTracks().some(t=>t.readyState==='live')) cam=true;
+   if(sv.srcObject.getAudioTracks().some(t=>t.readyState==='live')) mic=true;
+  }
+ }catch(e){}
+ return {mic,cam};
+}
+function liveBadgeTick(){
+ const el=$('liveBadge'); if(!el||el===_NULLEL) return;
+ const s=liveCapture();
+ if(!s.mic && !s.cam){ el.className='livebadge'; el.textContent=''; return; }
+ el.className='livebadge on';
+ el.innerHTML='<span class="lbdot"></span>'+(s.cam&&s.mic?'CAMERA + MIC LIVE':(s.cam?'CAMERA LIVE':'MIC LIVE'));
+}
+setInterval(liveBadgeTick, 500);
+
+function coachUI(){
+ ['coachBtn','sCoachBtn'].forEach(id=>{
+  const el=$(id); if(!el||el===_NULLEL) return;
+  el.textContent = COACH ? '\u2713 COACH' : 'COACH';
+  el.classList.toggle('on', COACH);
+ });
+}
 function previewCoach(){
  const bar=$('prevBar'); if(!bar||!bar.classList)return;
+ if(!coachOn()){ bar.className='prevbar'; bar.textContent=''; return; }
  const tick=()=>{
   try{
    const f=window.PC&&PC.frameMetrics&&PC.frameMetrics();
@@ -1465,7 +1595,7 @@ function previewCoach(){
      bar.className='prevbar on'+(pick[0]==='CHECK'?' check':'');
      bar.textContent=pick[1]; }
   }catch(e){}
-  prevCoachT=setTimeout(tick,1400);
+  if(coachOn()) prevCoachT=setTimeout(tick,1400);
  };
  tick();
 }
@@ -1587,7 +1717,7 @@ async function boothRefresh(){
    <span class="pill" style="${done===others.length?'color:#5cae7e;border-color:#5cae7e':''}">${done===others.length?'COMPLETE':'IN PROGRESS'}</span></div>`;
  h+=`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:11px">
    <button class="ghost" onclick="boothUnready()">UNLOCK SCENE</button>
-   <button class="ghost" onclick="boothRunAll()">RECORD ALL IN SEQUENCE</button>
+   <button class="ghost" onclick="bsOpen()">RECORD ALL IN SEQUENCE</button>
    <button class="ghost" onclick="boothClear()">CLEAR RECORDINGS</button>
    ${done===others.length?`<button onclick="boothStitch()">&#9654; PLAY THE WHOLE READ</button>`:''}</div>`;
 
@@ -1601,7 +1731,7 @@ async function boothRefresh(){
         <div id="ra_${k}" style="font-size:12.5px;margin-top:3px;line-height:1.55">${busy?raHTML(b.text):esc2(b.text)}</div>
       </div>
       <button class="mini ${busy?'':'ghost'}" style="${busy?'border-color:#d9694e;color:#d9694e':''}"
-        onclick="boothToggle('${k}',${i})">${busy?'&#9632; STOP':(arr.length?'ANOTHER':'&#9679; REC')}</button>
+        onclick="bsOpen('${k}')">${arr.length?'ANOTHER':'&#9679; REC'}</button>
     </div>`;
   if(arr.length){
    h+=`<div class="takepills">`;
@@ -1649,6 +1779,143 @@ async function boothStitch(){
  next();
 }
 
+/* ===== BOOTH STAGE =====
+   Full screen, one line at a time. States:
+     ARMED   - line is up, nothing recording, waiting on you
+     REC     - recording, colouring, timecode running
+     REVIEW  - just stopped, keep or redo before moving on
+   Auto-advance lands on ARMED, never straight into REC - you get a beat. */
+let BS={on:false, list:[], ix:0, state:'ARMED', sessionSecs:0, wake:null};
+
+function bsLines(){
+ const om=SIDES.omit||[];
+ return activeScript().filter(b=>!b.mine && om.indexOf(b.who)<0);
+}
+/* The line before this one in the script, whoever says it. Usually yours, which
+   is the point - you need to know what you are answering. */
+function bsPrevOf(beat){
+ const all=activeScript();
+ const i=all.indexOf(beat);
+ return i>0 ? all[i-1] : null;
+}
+async function bsOpen(startKey){
+ BS.list=bsLines();
+ if(!BS.list.length) return;
+ BS.ix=Math.max(0, BS.list.findIndex(b=>boothKey(b)===startKey));
+ BS.on=true; BS.state='ARMED'; BS.sessionSecs=0;
+ $('bstage').classList.add('on');
+ try{ ActorReader.unlockAudio(); }catch(e){}
+ try{ if(navigator.wakeLock && !BS.wake) BS.wake=await navigator.wakeLock.request('screen'); }catch(e){}
+ bsRender();
+}
+async function bsExit(){
+ if(BS.state==='REC'){ try{ raStop(); await ActorReader.stop(); }catch(e){} }
+ BS.on=false; BS.state='ARMED'; boothBusy=null;
+ $('bstage').classList.remove('on');
+ try{ if(BS.wake){ await BS.wake.release(); BS.wake=null; } }catch(e){}
+ try{ ActorReader.disarm(); }catch(e){}
+ await boothRefresh();
+}
+function bsFmt(t){ return (Math.round(t*10)/10).toFixed(1)+'s'; }
+function bsRender(){
+ if(!BS.on) return;
+ const b=BS.list[BS.ix]; if(!b) return bsExit();
+ const prev=bsPrevOf(b);
+ $('bsPos').textContent=(BS.ix+1)+' of '+BS.list.length;
+ const pv=$('bsPrev');
+ if(prev){ pv.className='bsPrev'; pv.innerHTML='<b>'+esc2(prev.who)+'</b>'+esc2(prev.text); }
+ else { pv.className='bsPrev none'; pv.innerHTML=''; }
+ $('bsWho').textContent=b.who;
+ $('bsLine').innerHTML = (BS.state==='REC') ? raHTML(b.text) : esc2(b.text);
+ const m=$('bsMeterWrap')||document.querySelector('.bsMeter');
+ if(m) m.className='bsMeter'+(BS.state==='REC'?' live':'');
+ const tc=$('bsTC');
+ tc.className='bsTC'+(BS.state==='REC'?' rec':'');
+ if(BS.state==='REVIEW') tc.innerHTML=bsFmt(BS.pendingDur||0)+'<small>'+bsFmt(BS.sessionSecs+(BS.pendingDur||0))+' TOTAL</small>';
+ else if(BS.state!=='REC') tc.innerHTML='0.0s<small>'+bsFmt(BS.sessionSecs)+' TOTAL</small>';
+ const arr=TAKESBY[boothKey(b)]||[];
+ let h='';
+ if(BS.state==='ARMED'){
+  h='<button class="bsRec" onclick="bsRec()"><span class="bsDot"></span>RECORD</button>';
+  if(BS.ix>0) h+='<button class="ghost" onclick="bsGo(-1)">BACK</button>';
+  if(BS.ix<BS.list.length-1) h+='<button class="ghost" onclick="bsGo(1)">SKIP</button>';
+  if(arr.length) h+='<button class="ghost" onclick="bsPlayCurrent()">&#9654; HEAR IT</button>';
+ } else if(BS.state==='REC'){
+  h='<button class="bsRec" onclick="bsStop()"><span class="bsDot live"></span>STOP</button>';
+ } else {
+  h='<button onclick="bsKeep()">KEEP &amp; NEXT</button>'+
+    '<button class="ghost" onclick="bsRedo()">REDO</button>'+
+    '<button class="ghost" onclick="bsPlayCurrent()">&#9654; HEAR IT</button>';
+ }
+ $('bsCtl').innerHTML=h;
+}
+function bsGo(d){
+ const n=BS.ix+d;
+ if(n<0||n>=BS.list.length) return;
+ BS.ix=n; BS.state='ARMED'; bsRender();
+}
+async function bsRec(){
+ const b=BS.list[BS.ix]; if(!b) return;
+ const k=boothKey(b);
+ try{ await ActorReader.start(); }
+ catch(e){ return alert('Microphone unavailable: '+e.message); }
+ boothBusy=k; BS.state='REC'; BS.t0=Date.now();
+ bsRender();
+ raStart(k,b.text);
+ RA.paint=()=>{ const el=$('bsLine'); if(el&&BS.state==='REC') el.innerHTML=raHTML(b.text); };
+ BS.clock=setInterval(()=>{
+  const el=$('bsTC'); if(!el) return;
+  const t=(Date.now()-BS.t0)/1000;
+  el.innerHTML=bsFmt(t)+'<small>'+bsFmt(BS.sessionSecs+t)+' TOTAL</small>';
+  const bar=$('bsLevel'); const src=$('recLevel');
+  if(bar&&src) bar.style.width=src.style.width;
+ },80);
+}
+async function bsStop(){
+ if(BS.state!=='REC') return;
+ clearInterval(BS.clock); BS.clock=null;
+ raStop(); RA.paint=null;
+ const b=BS.list[BS.ix], k=boothKey(b);
+ const blob=await ActorReader.stop();
+ // hand the mic back the moment the take ends. Permission stays granted, so
+ // re-arming costs a couple of milliseconds - measured - and in exchange the
+ // OS recording indicator is honest about when you are actually being heard.
+ try{ ActorReader.disarm(); }catch(e){}
+ const dur=blob?await ActorReader.duration(blob):0;
+ const lvl=blob?await ActorReader.measure(blob):null;
+ if(blob&&blob.size) BS.pending=await ActorReader.putTakeFor(k,blob,
+   {dur:dur, gain:(lvl&&lvl.gain)||1, rms:(lvl&&lvl.rms)||0, silent:!!(lvl&&lvl.silent)});
+ BS.pendingDur=dur;
+ boothBusy=null; BS.state='REVIEW';
+ await bsSyncTakes();
+ bsRender();
+}
+async function bsSyncTakes(){
+ const have=await ActorReader.all();
+ TAKESBY={};
+ have.forEach(c=>{ if(c.line){ (TAKESBY[c.line]=TAKESBY[c.line]||[]).push(c); } });
+ Object.keys(TAKESBY).forEach(x=>TAKESBY[x].sort((a,b)=>a.at-b.at));
+}
+async function bsKeep(){
+ BS.sessionSecs += (BS.pendingDur||0);
+ BS.pending=null; BS.pendingDur=0;
+ if(BS.ix>=BS.list.length-1){ return bsExit(); }
+ BS.ix++; BS.state='ARMED'; bsRender();
+}
+/* REDO throws the flubbed take away rather than stacking it. If you want to
+   compare versions, ANOTHER in the list still does that. */
+async function bsRedo(){
+ if(BS.pending){ try{ await ActorReader.del(BS.pending); }catch(e){} }
+ BS.pending=null; BS.pendingDur=0;
+ await bsSyncTakes();
+ BS.state='ARMED'; bsRender();
+}
+async function bsPlayCurrent(){
+ const k=boothKey(BS.list[BS.ix]);
+ const arr=TAKESBY[k]||[]; const c=arr[arr.length-1];
+ if(c) ActorReader.play(c.blob,null,clipGain(c));
+}
+
 /* ===== READ-ALONG =====
    While a reader line records, the words colour in as they are heard: white
    ahead of you, red behind. Anything you say that is not in the line shows as a
@@ -1658,7 +1925,7 @@ async function boothStitch(){
    browser has no SpeechRecognition, or refuses two mic consumers at once, the
    recording is unaffected - the line simply does not colour. The take is the
    thing that matters and it is never put at risk for a display effect. */
-let RA={on:false, rec:null, key:null, text:'', heard:'', t0:0, clock:null,
+let RA={on:false, rec:null, key:null, text:'', heard:'', t0:0, clock:null, paint:null,
         meterCtx:null, meterSrc:null, meterAn:null, meterRaf:null, unsupported:false};
 
 function raHTML(text){
@@ -1670,6 +1937,7 @@ function raHTML(text){
 }
 function raPaint(){
  if(!RA.key) return;
+ if(RA.paint){ try{ RA.paint(); }catch(e){} return; }   // the full-screen booth owns it
  const el=document.getElementById('ra_'+RA.key);
  if(el) el.innerHTML=raHTML(RA.text);
 }
@@ -1729,8 +1997,9 @@ function raMeter(){
    let peak=0;
    for(let i=0;i<buf.length;i++){ const v=Math.abs(buf[i]-128)/128; if(v>peak)peak=v; }
    held = peak>held ? peak : held*0.82 + peak*0.18;   // fast attack, slow release
-   const bar=document.getElementById('recLevel');
-   if(bar) bar.style.width=Math.min(100,Math.round(held*180))+'%';
+   const w=Math.min(100,Math.round(held*180))+'%';
+   const bar=document.getElementById('recLevel'); if(bar) bar.style.width=w;
+   const bs=document.getElementById('bsLevel'); if(bs) bs.style.width=w;
   },40);
  }catch(e){}
 }
@@ -1744,6 +2013,7 @@ async function boothToggle(k,i){
  if(boothBusy===k){
   raStop();
   const blob=await ActorReader.stop();
+  try{ ActorReader.disarm(); }catch(e){}
   const dur=blob?await ActorReader.duration(blob):0;
   // measure once, here, so every line plays back at the same loudness later
   const lvl=blob?await ActorReader.measure(blob):null;
@@ -1885,7 +2155,7 @@ async function openStage(){
    $('stageVid').srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:true});
   }
  }catch(e){ alert('Camera unavailable: '+e.message); return exitStage(); }
- drawStage(); stageCoach();
+ drawStage(); stageCoach(); stageChrome(true); coachUI();
  try{ const r=$('stageRemote'); if(r&&r.style)r.style.display=REMOTE_ON?'':'none'; }catch(e){}
 }
 function exitStage(){
@@ -2011,13 +2281,17 @@ function beginRecording(st,btn){
   showTakeReview(t, blob);
  };
  sRecorder.start(); sRecOn=true; btn.classList.add('rec'); sT0=Date.now();
+ stageChromeAuto();          // give the frame the screen once you are rolling
  sTimer=setInterval(()=>{ const t=Math.floor((Date.now()-sT0)/1000);
-  $('sTC').textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); },250);
+  const tc=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
+  $('sTC').textContent=tc;
+  const m=$('sMinTC'); if(m&&m!==_NULLEL) m.textContent=tc; },250);
 }
 function stopRecording(){
  try{ sRecorder&&sRecorder.state!=='inactive'&&sRecorder.stop(); }catch(e){}
  sRecOn=false; const btn=$('sRec'); if(btn&&btn.classList)btn.classList.remove('rec');
  clearInterval(sTimer);
+ stageChrome(true);          // controls come straight back when you stop
 }
 
 /* You stop recording and you need to know, immediately, that you got it.
@@ -2056,8 +2330,26 @@ function stageToast(msg){
  el.textContent=msg; el.classList.add('on');
  clearTimeout(window._stt); window._stt=setTimeout(()=>el.classList.remove('on'),2200);
 }
+/* Chrome auto-hides a few seconds after recording starts, and only then. While
+   you are still framing, everything stays where you put it. */
+let sChromeT=null;
+function stageChrome(show){
+ const st=$('stage'); if(!st||st===_NULLEL) return;
+ if(sChromeT){ clearTimeout(sChromeT); sChromeT=null; }
+ if(show){
+  st.classList.remove('bare');
+  if(typeof sRecOn!=='undefined' && sRecOn) sChromeT=setTimeout(()=>stageChrome(false),4000);
+ } else {
+  st.classList.add('bare');
+ }
+}
+function stageChromeAuto(){
+ if(sChromeT){ clearTimeout(sChromeT); sChromeT=null; }
+ sChromeT=setTimeout(()=>stageChrome(false),2500);
+}
 function stageCoach(){
  const el=$('sCoach');
+ if(!coachOn()){ if(el){ el.className='sCoach'; el.textContent=''; } return; }
  const tick=()=>{
   try{
    const f=window.PC&&PC.frameMetrics&&PC.frameMetrics();
@@ -2067,7 +2359,7 @@ function stageCoach(){
    else{ const pick=n.find(x=>x[0]==='FIX')||n[0];
      el.className='sCoach on'+(pick[0]==='CHECK'?' check':''); el.textContent=pick[1]; }
   }catch(e){}
-  sCoachT=setTimeout(tick,1100);
+  if(coachOn()) sCoachT=setTimeout(tick,1100);
  }; tick();
 }
 document.addEventListener('keydown',e=>{
