@@ -14,21 +14,6 @@ header{display:grid;grid-template-columns:58px auto minmax(0,1fr) auto;gap:12px;
  border:0;border-radius:0;background:none;accent-color:var(--gold)}
 .cbrow span{flex:0 1 auto;font:9px var(--mono);letter-spacing:.08em;color:var(--mut);text-transform:uppercase;line-height:1.3}
 .slatebar{width:100%;height:26px;border-radius:3px;align-self:center;opacity:.92;box-shadow:inset 0 0 0 1px #00000055}
-/* Recording indicator. It has to be unmissable from arm's length. */
-@keyframes recpulse{0%,100%{opacity:1}50%{opacity:.35}}
-.recbar{display:flex;align-items:center;gap:10px;margin:0 0 11px;padding:10px 13px;border-radius:11px;
- background:#2a1210;border:1px solid #d9694e}
-.recdot{width:13px;height:13px;border-radius:50%;background:#e5484d;flex:0 0 13px;animation:recpulse 1s infinite}
-.recbar b{font:700 12px/1 var(--mono);letter-spacing:.14em;color:#ff8a80}
-.recbar .rt{font:12px/1 var(--mono);color:#ffb4ab;margin-left:auto}
-.recmeter{height:5px;border-radius:3px;background:#4a1f1c;overflow:hidden;margin-top:8px}
-.recmeter i{display:block;height:100%;background:#e5484d;width:0%;transition:width .08s linear}
-/* Read-along: the line colours in as it is spoken. */
-.ra-todo{color:var(--ink)}
-.ra-now{color:#fff;background:rgba(224,162,60,.22);border-radius:3px;padding:0 2px}
-.ra-said{color:#e5484d}
-.ra-extra{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:9px;
- background:rgba(90,160,255,.16);color:#7db4ff;font:10px/1.5 var(--mono)}
 .projrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--p1)}
 .projrow label{font:600 10px/1 var(--mono);letter-spacing:.1em;color:var(--faint);flex:0 0 auto;margin:0}
 .projrow input{flex:1 1 190px;min-width:0;margin:0;background:transparent;border:0;border-bottom:1px dashed var(--line2);border-radius:0;padding:4px 2px;font-size:16px;color:var(--ink)}
@@ -270,6 +255,10 @@ nav button:hover b{color:var(--bone)}
 <div class="section" id="boothWrap" style="display:none"><h3>Reader booth</h3><div class="inside">
 <div class="am" style="margin:0 0 11px">Record every line that is not yours. Your voice, your pace &mdash; the take plays these back so you have something real to work off.</div>
 <div id="boothList"></div>
+<div class="row" style="margin-top:11px;gap:8px;flex-wrap:wrap">
+  <button class="ghost" onclick="boothRunAll()">RECORD ALL IN SEQUENCE</button>
+  <button class="ghost" onclick="boothClear()">CLEAR RECORDINGS</button>
+</div>
 </div></div>
 
 <div class="section" id="slateSec" style="display:none"><h3>Slate move <span style="color:var(--faint);font-weight:400;font-size:10px;letter-spacing:.1em">OPTIONAL &middot; OFF</span></h3><div class="inside">
@@ -332,7 +321,6 @@ nav button:hover b{color:var(--bone)}
     <button class="ghost" id="remoteBtn" onclick="remoteEnable()">REMOTE</button>
   </div>
   <div id="remoteState"></div>
-  <div id="capReport"></div>
 
   <div class="am" style="margin-top:14px">How are you working this one?</div>
   <div class="modes">
@@ -349,15 +337,7 @@ nav button:hover b{color:var(--bone)}
 </div>
 </section>
 <section id="cut" class="panel"><div class="am">Actor Cut Room rules: DROP / HOLD / SURVIVOR. One survivor per scene. The software does not score acting.</div><div id="unsavedBar" class="unsaved"></div>
-<div class="section"><h3>Takes</h3><div class="inside">
-  <div class="am" style="margin:0 0 11px">Shot on the Camera app? Bring the clips in here. Cinematic, 4K, .mov &mdash; whatever your phone made.</div>
-  <input type="file" id="clipFile" accept="video/*,.mov,.mp4,.m4v,.hevc" multiple style="display:none">
-  <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:11px">
-    <button onclick="document.getElementById('clipFile').click()">IMPORT FROM PHONE</button>
-  </div>
-  <div id="importOut"></div>
-  <div id="cutTakes"></div>
-</div></div>
+<div class="section"><h3>Takes</h3><div class="inside" id="cutTakes"></div></div>
 <div class="section"><h3>Trim and compress</h3><div class="inside">
   <div id="cutWork"></div>
 </div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="am" style="margin:11px 0 0">Trimming lives in <b>Trim and compress</b> above. Each scene is joined using the trim you set there.</div>
@@ -378,7 +358,7 @@ nav button:hover b{color:var(--bone)}
 <section id="send" class="panel"><div class="am">One master, purpose-built derivatives. Never compress the compressed copy.</div><div class="section"><h3>Destination Engine</h3><div class="inside"><div class="dest" id="destinations"></div><div id="sendCheck" class="take" style="margin-top:10px"></div><div class="row" style="margin-top:10px"><button class="primary" onclick="preparePackage()">PREPARE PACKAGE</button><button onclick="sharePackage()">SHARE / EXPORT</button></div></div></div><div class="section"><h3>Delivery + Archive Ledger</h3><div class="inside"><div class="receipt" id="receipt">No package prepared.</div></div></div></section>
 <div class="bottom"><span>AMOAM UNDER THE HOOD</span><span>PROJECT HUB BRIDGE · OPTIONAL / FUTURE</span></div></div>
 <!-- loaded ahead of the inline script: renderJob() runs on first paint -->
-<script src="title.js"></script><script src="readalong.js"></script>
+<script src="title.js"></script>
 <script>
 const KEY='actor_os_wired_v06';
 const state=Object.assign({job:{project:'',projectSource:'UNKNOWN',projectAlt:[],role:'',due:'',instructions:'',research:''},takes:[],scene:1,destination:'REPRESENTATION',sequence:[],package:null},JSON.parse(localStorage.getItem(KEY)||'{}'));
@@ -501,16 +481,6 @@ function renderTakes(){$('takeCount').textContent=state.takes.length;try{unsaved
 function setTake(id,s){let t=state.takes.find(x=>x.id===id);if(!t)return;if(s==='SURVIVOR')state.takes.filter(x=>x.scene===t.scene).forEach(x=>{if(x.id!==id&&x.status==='SURVIVOR')x.status='HOLD'});t.status=s;localStorage.setItem(KEY,JSON.stringify(state));renderTakes();renderCut()}window.setTake=setTake;
 /* Plain words, and an honest distinction: numbers typed in are not a cut until
    an encode has been run with them. */
-/* Join order is the ORDER column, then take number. Explicit beats implicit. */
-function sortedTakes(){
- return (state.takes||[]).slice().sort((a,b)=>((+a.scene||0)-(+b.scene||0))||((+a.n||0)-(+b.n||0)));
-}
-function setScene(id,v){
- const t=(state.takes||[]).find(x=>x.id===id); if(!t) return;
- t.scene=Math.max(1,parseInt(v,10)||1);
- try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
- renderCut();
-}
 function trimCaption(t,forJoin){
  const a=+(t.trimIn||0), b=+(t.trimOut||0);
  if(!a && !b) return 'no trim';
@@ -523,64 +493,16 @@ function trimCaption(t,forJoin){
 }
 /* One file out of several scenes, in the app. Casting either wants the takes
    separately or wants them as one piece; this is the second case. */
-/* ===== IMPORT =====
-   Most self-tapes are not shot in a browser. They are shot in the Camera app,
-   often in Cinematic mode, and land in the photo library as .mov. Without this
-   the whole CUT pipeline is unreachable for the footage that actually exists. */
-async function probeClip(file){
- const url=URL.createObjectURL(file);
- const v=document.createElement('video');
- v.preload='metadata'; v.muted=true; v.playsInline=true; v.src=url;
- try{
-  await new Promise((res,rej)=>{
-   const to=setTimeout(()=>rej(new Error('timed out reading this file')),20000);
-   v.onloadedmetadata=()=>{clearTimeout(to);res();};
-   v.onerror=()=>{clearTimeout(to);rej(new Error('this phone cannot decode that file in the browser'));};
-  });
-  if(!v.videoWidth) throw new Error('no video track the browser can read');
-  return {secs:Math.round((isFinite(v.duration)?v.duration:0)*10)/10, w:v.videoWidth, h:v.videoHeight, url};
- }catch(e){ URL.revokeObjectURL(url); throw e; }
-}
-async function importClips(files){
- const box=$('importOut'); const list=Array.from(files||[]);
- if(!list.length) return;
- if(box&&box!==_NULLEL) box.innerHTML='<div class="am" style="margin:0 0 11px">Reading '+list.length+' file'+(list.length>1?'s':'')+'&hellip;</div>';
- const ok=[], bad=[];
- let scene=Math.max(0,...(state.takes||[]).map(t=>+t.scene||0));
- for(const f of list){
-  try{
-   const info=await probeClip(f);
-   scene+=1;
-   const t={ id:'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-             scene, n:1, status:'HOLD', bytes:f.size, type:f.type||'video/mp4',
-             url:info.url, trimIn:0, trimOut:0, secs:info.secs, w:info.w, h:info.h,
-             sourceName:f.name, imported:true, created:new Date().toISOString() };
-   state.takes.push(t);
-   try{ await ActorReader.putTake(t.id,f); }catch(e){ t.storageWarning=true; }
-   ok.push(t);
-  }catch(e){ bad.push({name:f.name,why:e.message}); }
- }
- try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
- try{ renderTakes(); renderCut(); }catch(e){}
- if(box&&box!==_NULLEL){
-  let h='';
-  if(ok.length) h+='<div class="am" style="margin:0 0 11px">Brought in '+ok.length+' clip'+(ok.length>1?'s':'')+
-    '. '+(ok.some(t=>t.storageWarning)?'Storage was full for at least one \u2014 re-import before trimming.':'Mark the ones you want with USE.')+'</div>';
-  if(bad.length) h+='<div class="am" style="border-color:#d9694e;margin:0 0 11px"><b>Could not read '+bad.length+
-    ' file'+(bad.length>1?'s':'')+':</b><br>'+bad.map(x=>esc2(x.name)+' \u2014 '+esc2(x.why)).join('<br>')+'</div>';
-  box.innerHTML=h;
- }
-}
 function renderJoin(){
  const el=$('joinBox'); if(!el||el===_NULLEL) return;
- const surv=sortedTakes().filter(t=>t.status==='SURVIVOR'&&!t.isSlate);
+ const surv=(state.takes||[]).filter(t=>t.status==='SURVIVOR'&&!t.isSlate);
  if(surv.length<2){
   el.innerHTML='<div class="am" style="margin:0">Mark two or more scenes with USE and they can be joined into one file here. With one scene, save it from <b>Trim and compress</b>.</div>';
   return;
  }
  const secs=surv.reduce((n,t)=>n+Math.max(0.2,(t.secs||10)-(t.trimIn||0)-(t.trimOut||0)),0);
  let h='<div class="am" style="margin:0 0 9px">'+surv.length+' scenes &middot; about '+Math.round(secs)+'s joined, in this order:<br>'+
-   surv.map((t,i)=>(i+1)+'. '+esc2(t.sourceName||('Take '+t.n))+' &middot; '+trimCaption(t,true)).join('<br>')+'</div>';
+   surv.map((t,i)=>(i+1)+'. Scene '+t.scene+' take '+t.n+' &middot; '+trimCaption(t,true)).join('<br>')+'</div>';
  h+='<div class="modes" style="gap:8px;margin:0">';
  ActorCompress.PRESETS.forEach(pr=>{
   const est=ActorCompress.estimate(Math.max(1,secs),pr.mbps);
@@ -593,7 +515,7 @@ function renderJoin(){
 async function joinRun(presetId){
  const box=$('joinOut'); if(!box) return;
  const pr=ActorCompress.PRESETS.find(p=>p.id===presetId);
- const surv=sortedTakes().filter(t=>t.status==='SURVIVOR'&&!t.isSlate);
+ const surv=(state.takes||[]).filter(t=>t.status==='SURVIVOR'&&!t.isSlate);
  box.innerHTML='<div class="am" style="margin:0">Joining&hellip; this plays every scene through once, so it takes about as long as the finished piece.</div>';
  try{
   const items=[];
@@ -629,14 +551,13 @@ function joinSave(){
  document.body.appendChild(a); a.click();
  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1200);
 }
-function renderCut(){$('cutTakes').innerHTML=state.takes.length?sortedTakes().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>${t.sourceName?esc2(t.sourceName):'Take '+t.n}</b><small>${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'} · ${t.status} · ${trimCaption(t)}${t.secs?' · '+t.secs+'s':''}${t.w?' · '+t.w+'×'+t.h:''}</small></div><div class="row" style="gap:6px;align-items:center"><label style="margin:0;font-size:9px">ORDER</label><input type="number" min="1" step="1" value="${t.scene}" style="width:52px;flex:0 0 52px" onchange="setScene('${t.id}',this.value)"><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">USE</button></div></div>`).join(''):'No takes yet.';let surv=sortedTakes().filter(t=>t.status==='SURVIVOR');state.sequence=surv.map(t=>t.id);$('timeline').innerHTML=surv.map(t=>`<div class=clip><b>SCENE ${t.scene}</b><small>TAKE ${t.n} · SURVIVOR</small></div>`).join('')||'<span class=pill>No survivor selected.</span>';try{renderJoin();}catch(e){}}
+function renderCut(){$('cutTakes').innerHTML=state.takes.length?state.takes.map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>Scene ${t.scene} · Take ${t.n}</b><small>${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'} · ${t.status} · ${trimCaption(t)}</small></div><div><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">USE</button></div></div>`).join(''):'No takes yet.';let surv=state.takes.filter(t=>t.status==='SURVIVOR');state.sequence=surv.map(t=>t.id);$('timeline').innerHTML=surv.map(t=>`<div class=clip><b>SCENE ${t.scene}</b><small>TAKE ${t.n} · SURVIVOR</small></div>`).join('')||'<span class=pill>No survivor selected.</span>';try{renderJoin();}catch(e){}}
 function addSlate(){state.sequence.push('SLATE');$('timeline').insertAdjacentHTML('beforeend','<div class=clip><b>SLATE</b><small>office-specific / actor-selected</small></div>')}
 function slatePreview(){const pts=[];for(let i=0;i<=10;i++){let u=i/10;let y=u<.4?.2+(.75-.2)*(3*(u/.4)**2-2*(u/.4)**3):u<.55?.75:.75+(.25-.75)*(3*((u-.55)/.45)**2-2*((u-.55)/.45)**3);pts.push(y.toFixed(2))}$('slateState').textContent='PAN Y · '+pts.join(' → ')}
 const profiles={ACTORS_ACCESS:['Actors Access','Browser upload handoff'],REPRESENTATION:['Agent / Manager','Native share / transfer'],SOCIAL_VERTICAL:['Social · Vertical','9:16 derivative'],SOCIAL_LANDSCAPE:['Social · Landscape','16:9 derivative'],SAVE_MASTER:['Save Master','Full-quality source']};
 function renderSend(){$('destinations').innerHTML=Object.entries(profiles).map(([k,v])=>`<button class="${state.destination===k?'active':''}" onclick="chooseDest('${k}')">${v[0]}<br><small>${v[1]}</small></button>`).join('');let n=state.takes.filter(t=>t.status==='SURVIVOR').length;$('sendCheck').innerHTML=`<div><b>${n?'SURVIVOR READY':'NO SURVIVOR'}</b><small>${n} selected scene(s) · master protected · destination ${profiles[state.destination][0]}</small></div><span class="pill">${n?'READY TO PACKAGE':'FIX'}</span>`}function chooseDest(k){state.destination=k;localStorage.setItem(KEY,JSON.stringify(state));renderSend()}window.chooseDest=chooseDest;
 function preparePackage(){let surv=state.takes.filter(t=>t.status==='SURVIVOR');if(!surv.length)return alert('Select at least one survivor.');state.package={id:'PKG-'+Date.now().toString(36).toUpperCase(),project:state.job.project,role:state.job.role,destination:state.destination,profile:profiles[state.destination][0],sequence:surv.map(t=>({scene:t.scene,take:t.n,sourceId:t.id,trimIn:t.trimIn||0,trimOut:t.trimOut||0,trimRendered:!!t.trimRendered})),masterPolicy:'IMMUTABLE',derivativePolicy:'FROM_MASTER_ONLY',preparedAt:new Date().toISOString(),deliveryStatus:'PREPARED',nativeRender:'REQUIRED_FOR_TRUE_COMPOSITION_AND_TCE'};localStorage.setItem(KEY,JSON.stringify(state));$('receipt').textContent=JSON.stringify(state.package,null,2)}
 async function sharePackage(){if(!state.package)return alert('Prepare package first.');let text=`ACTOR OS package ${state.package.id} · ${state.package.project} · ${profiles[state.destination][0]}`;if(navigator.share){try{await navigator.share({title:'ACTOR OS Package',text})}catch(e){}}else navigator.clipboard?.writeText(text);state.package.deliveryStatus='HANDOFF_INITIATED';localStorage.setItem(KEY,JSON.stringify(state));$('receipt').textContent=JSON.stringify(state.package,null,2)}
-if($('clipFile')) $('clipFile').addEventListener('change',function(){ importClips(this.files); this.value=''; });
 function loadState(){for(let k of ['project','role','due','instructions','research'])if(state.job[k]!=null)$(k).value=state.job[k];
  if(state.job.project==='Untitled Performance'){state.job.project='';state.job.projectSource='UNKNOWN';}renderJob();renderPrompt();renderTakes();renderSend()}loadState();
 </script>
@@ -828,19 +749,9 @@ function renderSides(){
   h+=`<div class="am" style="margin:12px 0 8px">Tap <b>&#9654;</b> where the scene starts and <b>&#9632;</b> where it ends.
    Casting usually writes these by hand, so they are not in the file &mdash; set them once and they stick.
    ${rangeActive()?`<button class="mini ghost" style="margin-left:8px" onclick="clearRange()">CLEAR</button>`:''}</div>`;
-  // Once the scene is marked, everything outside it is noise. This drops it out
-  // of sight entirely rather than dimming it.
-  if(rangeActive()){
-   const nOut=SIDES.script.filter((b,i)=>!inRange(i)).length;
-   h+=`<div class="row" style="gap:8px;flex-wrap:wrap;margin:0 0 9px">
-     <button class="${SIDES.only?'':'ghost'}" onclick="toggleOnly()">
-       ${SIDES.only?'&#10003; SHOWING THE SCENE ONLY':'SHOW THE SCENE ONLY'}</button>
-     <span class="pill">${nOut} line${nOut===1?'':'s'} outside</span></div>`;
-  }
   h+='<div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:9px">';
   SIDES.script.forEach((b,i)=>{
    const on=inRange(i), isS=(SIDES.startIx===i), isE=(SIDES.endIx===i);
-   if(SIDES.only && rangeActive() && !on) return;   // hidden, not dimmed
    h+=`<div style="padding:8px 11px;border-bottom:1px solid var(--line);font-size:12.5px;
       ${on?'':'opacity:.3'};${isS||isE?'background:rgba(224,162,60,.10)':''}">
      <div style="display:flex;gap:9px;align-items:flex-start">
@@ -918,16 +829,14 @@ function inRange(i){
 }
 function setStart(i){ SIDES.startIx=i; if(SIDES.endIx>=0&&SIDES.endIx<i)SIDES.endIx=-1; saveRange(); renderSides(); boothRefresh(); }
 function setEnd(i){ SIDES.endIx=i; if(SIDES.startIx>i)SIDES.startIx=-1; saveRange(); renderSides(); boothRefresh(); }
-function clearRange(){ SIDES.startIx=-1; SIDES.endIx=-1; SIDES.only=false; saveRange(); renderSides(); boothRefresh(); }
-/* Collapse the sides to the marked scene. Off automatically if the marks go. */
-function toggleOnly(){ SIDES.only=!SIDES.only; saveRange(); renderSides(); }
+function clearRange(){ SIDES.startIx=-1; SIDES.endIx=-1; saveRange(); renderSides(); boothRefresh(); }
 function saveRange(){
  try{ localStorage.setItem('actor_os_range_'+(SIDES.file||'x'),
-   JSON.stringify({s:SIDES.startIx,e:SIDES.endIx,me:SIDES.me,om:SIDES.omit||[],rdy:!!SIDES.ready,pk:SIDES.pick||{},only:!!SIDES.only})); }catch(e){}
+   JSON.stringify({s:SIDES.startIx,e:SIDES.endIx,me:SIDES.me,om:SIDES.omit||[],rdy:!!SIDES.ready,pk:SIDES.pick||{}})); }catch(e){}
 }
 function loadRange(){
  try{ const r=JSON.parse(localStorage.getItem('actor_os_range_'+(SIDES.file||'x'))||'null');
-   if(r){ SIDES.startIx=r.s; SIDES.endIx=r.e; SIDES.omit=r.om||[]; SIDES.ready=!!r.rdy; SIDES.pick=r.pk||{}; SIDES.only=!!r.only; } }catch(e){}
+   if(r){ SIDES.startIx=r.s; SIDES.endIx=r.e; SIDES.omit=r.om||[]; SIDES.ready=!!r.rdy; SIDES.pick=r.pk||{}; } }catch(e){}
 }
 /* the script the take actually runs on */
 function activeScript(){
@@ -1118,14 +1027,13 @@ function navState(){
 let CUTSEL=null, CUTIN=0, CUTOUT=0;
 function renderCutWork(){
  const el=$('cutWork'); if(!el||el===_NULLEL)return;
- const takes=sortedTakes().filter(t=>t.status!=='DROP');
- if(!takes.length){ el.innerHTML='<div class="am" style="margin:0">Nothing here yet. Record in SHOOT, or IMPORT FROM PHONE above.</div>'; return; }
+ const takes=(state.takes||[]).filter(t=>t.status!=='DROP');
+ if(!takes.length){ el.innerHTML='<div class="am" style="margin:0">Nothing shot yet.</div>'; return; }
  const t=takes.find(x=>x.id===CUTSEL)||takes.find(x=>x.status==='SURVIVOR')||takes[takes.length-1];
- // eslint-disable-next-line
  CUTSEL=t.id;
  let h=`<div class="row" style="gap:7px;flex-wrap:wrap;margin-bottom:11px">`;
  takes.forEach(x=>{ h+=`<button class="mini ${x.id===CUTSEL?'':'ghost'}" onclick="cutPick('${x.id}')">
-   ${x.isSlate?'Slate':(x.sourceName?esc2(x.sourceName.replace(/\.[^.]+$/,'')).slice(0,14):'Take '+x.n)}${x.status==='SURVIVOR'?' &#9733;':''}</button>`; });
+   ${x.isSlate?'Slate':'Take '+x.n}${x.status==='SURVIVOR'?' &#9733;':''}</button>`; });
  h+=`</div>`;
  h+=`<video id="cutVid" src="${t.url||''}" controls playsinline style="width:100%;border-radius:10px;background:#000"></video>`;
  h+=`<div class="grid2" style="margin-top:11px">
@@ -1334,82 +1242,8 @@ async function startPreview(){
   await PCa.open($('prevVid'), c);
   window.PC=PCa;
   const off=$('prevOff'); if(off&&off.style)off.style.display='none';
-  previewFormat(); previewCoach(); try{renderCapReport();}catch(e){}
+  previewFormat(); previewCoach();
  }catch(e){ alert('Camera unavailable: '+e.message); }
-}
-/* ===== WHAT YOU ACTUALLY GOT =====
-   An 'ideal' constraint is a request. This prints the answer: granted frame,
-   frame rate, lens and record codec, whether the device had more to give, and
-   which manual controls this particular phone exposes to the browser. */
-function renderCapReport(){
- const el=$('capReport'); if(!el||el===_NULLEL) return;
- const r=window.PC&&PC.report;
- if(!r){ el.innerHTML=''; return; }
- const g=r.granted, c=r.ceiling;
- const face=g.facing==='user'?'front':(g.facing==='environment'?'rear':(g.facing||'unknown'));
- let h='<div class="section" style="margin-top:11px"><h3>Capture</h3><div class="inside">';
- const bits=[];
- if(g.facing) bits.push(face+' lens');
- bits.push('records as '+esc2(r.codec.label));
- h+='<div class="take" style="margin:0"><div><b>'+(g.w?g.w+'&times;'+g.h:'unknown')+
-    (g.fps?' &middot; '+g.fps+' fps':'')+'</b><br><small>'+bits.join(' &middot; ')+'</small></div><span class="pill">'+
-    (r.atCeiling?'DEVICE MAX':(r.shortfall?'BELOW REQUEST':'OK'))+'</span></div>';
- // frame rate matters more than pixel count for a self-tape; say so when it drops
- if(g.fps && g.fps<24){
-  // telling someone to drop resolution is useless if the device caps low anyway
-  const canDoBetter = c.fps && c.fps>=24;
-  h+='<div class="am" style="border-color:#d9694e;margin:9px 0 0">Only '+g.fps+' fps'+
-     (canDoBetter ? ' at this size. Motion will judder &mdash; drop a size for smoother frames.'
-                  : '. This camera will not give the browser more than '+Math.round(c.fps||g.fps)+
-                    ' fps at any size. For 30 fps, shoot in the Camera app and import.')+'</div>';
- }
- const sizes=(PC.offeredSizes&&PC.offeredSizes())||[];
- if(sizes.length>1){
-  h+='<label style="margin-top:11px">Size</label><select onchange="camSize(this.value)" style="width:100%">'+
-     sizes.map(sz=>'<option value="'+sz[0]+'x'+sz[1]+'"'+((g.w===sz[0]&&g.h===sz[1])?' selected':'')+'>'+
-       esc2(sz[2])+' &middot; '+sz[0]+'&times;'+sz[1]+'</option>').join('')+'</select>';
- }
- // only a problem when the device short-changed us, not when the size was chosen
- if(c.w && g.w && c.w>g.w && !r.sizeChosen){
-  h+='<div class="am" style="border-color:#d9694e;margin:9px 0 0">This camera reports it can do '+
-     c.w+'&times;'+c.h+' but handed back '+g.w+'&times;'+g.h+'. Close other camera apps and reopen.</div>';
- }
- const keys=Object.keys(r.controls||{});
- h+='<div class="am" style="margin:9px 0 0">Manual controls this phone exposes to the browser: '+
-    (keys.length?esc2(keys.join(', ')):'<b>none</b> &mdash; exposure and focus are automatic here')+'</div>';
- if(r.controls.zoom){
-  const z=r.controls.zoom;
-  h+='<label style="margin-top:11px">Zoom</label><input type="range" min="'+(z.min||1)+'" max="'+(z.max||1)+
-     '" step="'+(z.step||0.1)+'" value="'+((r.settings&&r.settings.zoom)||z.min||1)+
-     '" oninput="camControl(\'zoom\',parseFloat(this.value))" style="width:100%">';
- }
- if(r.controls.torch){
-  h+='<label class="cbrow" style="margin-top:11px"><input type="checkbox" '+
-     ((r.settings&&r.settings.torch)?'checked':'')+' onchange="camControl(\'torch\',this.checked)">'+
-     '<span>Torch</span></label>';
- }
- if(r.controls.focusMode&&r.controls.focusMode.length>1){
-  h+='<label style="margin-top:11px">Focus</label><select onchange="camControl(\'focusMode\',this.value)" style="width:100%">'+
-     r.controls.focusMode.map(m=>'<option value="'+m+'"'+((r.settings&&r.settings.focusMode)===m?' selected':'')+'>'+esc2(m)+'</option>').join('')+'</select>';
- }
- if(r.controls.exposureMode&&r.controls.exposureMode.length>1){
-  h+='<label style="margin-top:11px">Exposure</label><select onchange="camControl(\'exposureMode\',this.value)" style="width:100%">'+
-     r.controls.exposureMode.map(m=>'<option value="'+m+'"'+((r.settings&&r.settings.exposureMode)===m?' selected':'')+'>'+esc2(m)+'</option>').join('')+'</select>';
- }
- h+='<div class="am" style="margin:11px 0 0">Shallow-focus Cinematic is an Apple native feature and no browser can reach it. Shoot it in the Camera app and use <b>IMPORT FROM PHONE</b> in CUT.</div>';
- h+='</div></div>';
- el.innerHTML=h;
-}
-async function camSize(v){
- const m=String(v).split('x');
- if(window.PC&&PC.setSize){ await PC.setSize(+m[0],+m[1],30); renderCapReport(); }
-}
-async function camControl(k,v){
- try{
-  const t=window.PC&&PC.stream&&PC.stream.getVideoTracks()[0]; if(!t) return;
-  await t.applyConstraints({advanced:[{[k]:v}]});
-  if(PC.report) PC.report.settings=t.getSettings?t.getSettings():PC.report.settings;
- }catch(e){}
 }
 function previewFormat(){
  const f=$('captureFormat').value;
@@ -1549,16 +1383,11 @@ async function boothRefresh(){
    return arr.find(c=>c.id===sel) || arr[arr.length-1] || null; };
  const done=others.filter(b=>picked(boothKey(b))).length;
 
- let h=boothBusy?`<div class="recbar"><span class="recdot"></span><b>RECORDING</b>
-   <span class="rt" id="recClock">0.0s</span></div>
-   <div class="recmeter"><i id="recLevel"></i></div>`:'';
- h+=`<div class="take" style="margin:${boothBusy?'11px 0':'0 0 11px'}"><div><b>${done} of ${others.length} recorded</b>
+ let h=`<div class="take" style="margin:0 0 11px"><div><b>${done} of ${others.length} recorded</b>
    <small>${done===others.length?'Every line has a take. Ready for the next stage.':'Record each line, keep the one you like.'}</small></div>
    <span class="pill" style="${done===others.length?'color:#5cae7e;border-color:#5cae7e':''}">${done===others.length?'COMPLETE':'IN PROGRESS'}</span></div>`;
  h+=`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:11px">
    <button class="ghost" onclick="boothUnready()">UNLOCK SCENE</button>
-   <button class="ghost" onclick="boothRunAll()">RECORD ALL IN SEQUENCE</button>
-   <button class="ghost" onclick="boothClear()">CLEAR RECORDINGS</button>
    ${done===others.length?`<button onclick="boothStitch()">&#9654; PLAY THE WHOLE READ</button>`:''}</div>`;
 
  h+='<div style="display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden">';
@@ -1568,7 +1397,7 @@ async function boothRefresh(){
     <div style="display:flex;gap:10px;align-items:flex-start">
       <div style="flex:1;min-width:0">
         <b style="font-size:9.5px;letter-spacing:.14em;color:var(--gold)">${esc2(b.who)}</b>
-        <div id="ra_${k}" style="font-size:12.5px;margin-top:3px;line-height:1.55">${busy?raHTML(b.text):esc2(b.text)}</div>
+        <div style="font-size:12.5px;margin-top:3px">${esc2(b.text)}</div>
       </div>
       <button class="mini ${busy?'':'ghost'}" style="${busy?'border-color:#d9694e;color:#d9694e':''}"
         onclick="boothToggle('${k}',${i})">${busy?'&#9632; STOP':(arr.length?'ANOTHER':'&#9679; REC')}</button>
@@ -1592,10 +1421,9 @@ async function boothRefresh(){
 function boothReady(){ SIDES.ready=true; saveRange(); boothRefresh(); }
 function boothUnready(){ SIDES.ready=false; saveRange(); boothRefresh(); }
 function boothPick(k,id){ SIDES.pick=SIDES.pick||{}; SIDES.pick[k]=id; saveRange(); boothRefresh(); }
-function clipGain(c){ return (c&&typeof c.gain==='number'&&isFinite(c.gain))?c.gain:1; }
 async function boothPlayId(id){
  const all=await ActorReader.all(); const c=all.find(x=>x.id===id);
- if(c)ActorReader.play(c.blob,null,clipGain(c));
+ if(c)ActorReader.play(c.blob);
 }
 async function boothDrop(k,id){
  await ActorReader.del(id);
@@ -1615,123 +1443,21 @@ async function boothStitch(){
  });
  if(!seq.length)return;
  let i=0;
- const next=()=>{ if(i>=seq.length)return; const c=seq[i++]; ActorReader.play(c.blob,next,clipGain(c)); };
+ const next=()=>{ if(i>=seq.length)return; ActorReader.play(seq[i++].blob,next); };
  next();
 }
 
-/* ===== READ-ALONG =====
-   While a reader line records, the words colour in as they are heard: white
-   ahead of you, red behind. Anything you say that is not in the line shows as a
-   separate tag rather than being silently ignored.
-
-   This is a second, independent listener running alongside the recorder. If the
-   browser has no SpeechRecognition, or refuses two mic consumers at once, the
-   recording is unaffected - the line simply does not colour. The take is the
-   thing that matters and it is never put at risk for a display effect. */
-let RA={on:false, rec:null, key:null, text:'', heard:'', t0:0, clock:null,
-        meterCtx:null, meterSrc:null, meterAn:null, meterRaf:null, unsupported:false};
-
-function raHTML(text){
- if(!window.ActorReadAlong) return esc2(text);
- const t=ActorReadAlong.track(text, RA.heard||'');
- let h=ActorReadAlong.html(t, esc2);
- if(t.extras.length) h+='<span class="ra-extra">+ '+esc2(t.extras.slice(-4).join(' '))+'</span>';
- return h;
-}
-function raPaint(){
- if(!RA.key) return;
- const el=document.getElementById('ra_'+RA.key);
- if(el) el.innerHTML=raHTML(RA.text);
-}
-function raStart(key,text){
- RA.key=key; RA.text=text||''; RA.heard=''; RA.t0=Date.now();
- RA.clock=setInterval(()=>{
-  const c=document.getElementById('recClock');
-  if(c) c.textContent=((Date.now()-RA.t0)/1000).toFixed(1)+'s';
- },100);
- raMeter();
- const R=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!R){ RA.unsupported=true; return; }
- try{
-  RA.rec=new R();
-  RA.rec.continuous=true; RA.rec.interimResults=true; RA.rec.lang='en-US';
-  RA.rec.onresult=e=>{
-   let txt='';
-   for(let i=0;i<e.results.length;i++) txt+=e.results[i][0].transcript+' ';
-   RA.heard=txt.trim();
-   raPaint();
-  };
-  RA.rec.onerror=()=>{};                       // never let this touch the take
-  RA.rec.onend=()=>{ if(RA.on){ try{ RA.rec.start(); }catch(e){} } };
-  RA.rec.start(); RA.on=true;
- }catch(e){ RA.on=false; RA.rec=null; }
-}
-function raStop(){
- RA.on=false;
- try{ if(RA.rec){ RA.rec.onend=null; RA.rec.stop(); } }catch(e){}
- RA.rec=null;
- if(RA.clock){ clearInterval(RA.clock); RA.clock=null; }
- raMeterStop();
- RA.key=null; RA.heard=''; RA.text='';
-}
-/* Level meter straight off the recording mic, so 'am I being heard' is answered
-   by the actual signal rather than by a spinning icon. */
-function raMeter(){
- try{
-  const mic=ActorReader.micStream&&ActorReader.micStream();
-  if(!mic) return;
-  const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
-  const ctx=new AC(); RA.meterCtx=ctx;
-  // these MUST stay referenced. A MediaStreamAudioSourceNode held only by a
-  // local goes out of scope, gets collected, and the analyser quietly reads
-  // silence forever - the meter sits at zero while the mic is working fine.
-  RA.meterSrc=ctx.createMediaStreamSource(mic);
-  RA.meterAn=ctx.createAnalyser(); RA.meterAn.fftSize=512;
-  RA.meterSrc.connect(RA.meterAn);
-  const an=RA.meterAn;
-  const buf=new Uint8Array(an.fftSize);
-  // setInterval, not requestAnimationFrame: rAF gets throttled whenever the
-  // browser decides the page is not worth painting, and a recording indicator
-  // that silently stops moving is worse than none at all. 25 Hz is plenty.
-  let held=0;
-  RA.meterRaf=setInterval(()=>{
-   an.getByteTimeDomainData(buf);
-   let peak=0;
-   for(let i=0;i<buf.length;i++){ const v=Math.abs(buf[i]-128)/128; if(v>peak)peak=v; }
-   held = peak>held ? peak : held*0.82 + peak*0.18;   // fast attack, slow release
-   const bar=document.getElementById('recLevel');
-   if(bar) bar.style.width=Math.min(100,Math.round(held*180))+'%';
-  },40);
- }catch(e){}
-}
-function raMeterStop(){
- if(RA.meterRaf){ clearInterval(RA.meterRaf); RA.meterRaf=null; }
- try{ if(RA.meterSrc) RA.meterSrc.disconnect(); }catch(e){}
- try{ if(RA.meterCtx) RA.meterCtx.close(); }catch(e){}
- RA.meterCtx=RA.meterSrc=RA.meterAn=null;
-}
 async function boothToggle(k,i){
  if(boothBusy===k){
-  raStop();
   const blob=await ActorReader.stop();
   const dur=blob?await ActorReader.duration(blob):0;
-  // measure once, here, so every line plays back at the same loudness later
-  const lvl=blob?await ActorReader.measure(blob):null;
-  if(blob&&blob.size) await ActorReader.putTakeFor(k,blob,
-    {dur:dur, gain:(lvl&&lvl.gain)||1, rms:(lvl&&lvl.rms)||0, silent:!!(lvl&&lvl.silent)});
+  if(blob&&blob.size) await ActorReader.putTakeFor(k,blob,{dur:dur});
   boothBusy=null; await boothRefresh();
   if(boothSeq) boothNext();
   return;
  }
- if(boothBusy){ raStop(); await ActorReader.stop(); boothBusy=null; }
- try{
-  await ActorReader.start(); boothBusy=k;
-  try{ ActorReader.unlockAudio(); }catch(e){}
-  await boothRefresh();
-  const line=(activeScript().filter(b=>!b.mine&&(SIDES.omit||[]).indexOf(b.who)<0)
-              .find(b=>boothKey(b)===k));
-  raStart(k, line?line.text:'');
- }
+ if(boothBusy){ await ActorReader.stop(); boothBusy=null; }
+ try{ await ActorReader.start(); boothBusy=k; await boothRefresh(); }
  catch(e){ alert('Microphone unavailable: '+e.message); }
 }
 async function boothRunAll(){
@@ -1920,7 +1646,7 @@ function speakPartner(){
     <div class="sCue" style="color:#E0A23C">not recorded &middot; tap &#9654; to step past</div>`;
   return;
  }
- ActorReader.play(c.blob, ()=>{ if(MODE==='PARTNER') stageStep(1); }, clipGain(c));
+ ActorReader.play(c.blob, ()=>{ if(MODE==='PARTNER') stageStep(1); });
 }
 /* Three seconds to get set. You press record, the count runs on screen, then it
    rolls. Nothing is captured during the count - the take starts clean at zero. */
