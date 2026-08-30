@@ -14,6 +14,21 @@ header{display:grid;grid-template-columns:58px auto minmax(0,1fr) auto;gap:12px;
  border:0;border-radius:0;background:none;accent-color:var(--gold)}
 .cbrow span{flex:0 1 auto;font:9px var(--mono);letter-spacing:.08em;color:var(--mut);text-transform:uppercase;line-height:1.3}
 .slatebar{width:100%;height:26px;border-radius:3px;align-self:center;opacity:.92;box-shadow:inset 0 0 0 1px #00000055}
+/* Recording indicator. It has to be unmissable from arm's length. */
+@keyframes recpulse{0%,100%{opacity:1}50%{opacity:.35}}
+.recbar{display:flex;align-items:center;gap:10px;margin:0 0 11px;padding:10px 13px;border-radius:11px;
+ background:#2a1210;border:1px solid #d9694e}
+.recdot{width:13px;height:13px;border-radius:50%;background:#e5484d;flex:0 0 13px;animation:recpulse 1s infinite}
+.recbar b{font:700 12px/1 var(--mono);letter-spacing:.14em;color:#ff8a80}
+.recbar .rt{font:12px/1 var(--mono);color:#ffb4ab;margin-left:auto}
+.recmeter{height:5px;border-radius:3px;background:#4a1f1c;overflow:hidden;margin-top:8px}
+.recmeter i{display:block;height:100%;background:#e5484d;width:0%;transition:width .08s linear}
+/* Read-along: the line colours in as it is spoken. */
+.ra-todo{color:var(--ink)}
+.ra-now{color:#fff;background:rgba(224,162,60,.22);border-radius:3px;padding:0 2px}
+.ra-said{color:#e5484d}
+.ra-extra{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:9px;
+ background:rgba(90,160,255,.16);color:#7db4ff;font:10px/1.5 var(--mono)}
 .projrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--p1)}
 .projrow label{font:600 10px/1 var(--mono);letter-spacing:.1em;color:var(--faint);flex:0 0 auto;margin:0}
 .projrow input{flex:1 1 190px;min-width:0;margin:0;background:transparent;border:0;border-bottom:1px dashed var(--line2);border-radius:0;padding:4px 2px;font-size:16px;color:var(--ink)}
@@ -255,10 +270,6 @@ nav button:hover b{color:var(--bone)}
 <div class="section" id="boothWrap" style="display:none"><h3>Reader booth</h3><div class="inside">
 <div class="am" style="margin:0 0 11px">Record every line that is not yours. Your voice, your pace &mdash; the take plays these back so you have something real to work off.</div>
 <div id="boothList"></div>
-<div class="row" style="margin-top:11px;gap:8px;flex-wrap:wrap">
-  <button class="ghost" onclick="boothRunAll()">RECORD ALL IN SEQUENCE</button>
-  <button class="ghost" onclick="boothClear()">CLEAR RECORDINGS</button>
-</div>
 </div></div>
 
 <div class="section" id="slateSec" style="display:none"><h3>Slate move <span style="color:var(--faint);font-weight:400;font-size:10px;letter-spacing:.1em">OPTIONAL &middot; OFF</span></h3><div class="inside">
@@ -367,7 +378,7 @@ nav button:hover b{color:var(--bone)}
 <section id="send" class="panel"><div class="am">One master, purpose-built derivatives. Never compress the compressed copy.</div><div class="section"><h3>Destination Engine</h3><div class="inside"><div class="dest" id="destinations"></div><div id="sendCheck" class="take" style="margin-top:10px"></div><div class="row" style="margin-top:10px"><button class="primary" onclick="preparePackage()">PREPARE PACKAGE</button><button onclick="sharePackage()">SHARE / EXPORT</button></div></div></div><div class="section"><h3>Delivery + Archive Ledger</h3><div class="inside"><div class="receipt" id="receipt">No package prepared.</div></div></div></section>
 <div class="bottom"><span>AMOAM UNDER THE HOOD</span><span>PROJECT HUB BRIDGE · OPTIONAL / FUTURE</span></div></div>
 <!-- loaded ahead of the inline script: renderJob() runs on first paint -->
-<script src="title.js"></script>
+<script src="title.js"></script><script src="readalong.js"></script>
 <script>
 const KEY='actor_os_wired_v06';
 const state=Object.assign({job:{project:'',projectSource:'UNKNOWN',projectAlt:[],role:'',due:'',instructions:'',research:''},takes:[],scene:1,destination:'REPRESENTATION',sequence:[],package:null},JSON.parse(localStorage.getItem(KEY)||'{}'));
@@ -817,9 +828,19 @@ function renderSides(){
   h+=`<div class="am" style="margin:12px 0 8px">Tap <b>&#9654;</b> where the scene starts and <b>&#9632;</b> where it ends.
    Casting usually writes these by hand, so they are not in the file &mdash; set them once and they stick.
    ${rangeActive()?`<button class="mini ghost" style="margin-left:8px" onclick="clearRange()">CLEAR</button>`:''}</div>`;
+  // Once the scene is marked, everything outside it is noise. This drops it out
+  // of sight entirely rather than dimming it.
+  if(rangeActive()){
+   const nOut=SIDES.script.filter((b,i)=>!inRange(i)).length;
+   h+=`<div class="row" style="gap:8px;flex-wrap:wrap;margin:0 0 9px">
+     <button class="${SIDES.only?'':'ghost'}" onclick="toggleOnly()">
+       ${SIDES.only?'&#10003; SHOWING THE SCENE ONLY':'SHOW THE SCENE ONLY'}</button>
+     <span class="pill">${nOut} line${nOut===1?'':'s'} outside</span></div>`;
+  }
   h+='<div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:9px">';
   SIDES.script.forEach((b,i)=>{
    const on=inRange(i), isS=(SIDES.startIx===i), isE=(SIDES.endIx===i);
+   if(SIDES.only && rangeActive() && !on) return;   // hidden, not dimmed
    h+=`<div style="padding:8px 11px;border-bottom:1px solid var(--line);font-size:12.5px;
       ${on?'':'opacity:.3'};${isS||isE?'background:rgba(224,162,60,.10)':''}">
      <div style="display:flex;gap:9px;align-items:flex-start">
@@ -897,14 +918,16 @@ function inRange(i){
 }
 function setStart(i){ SIDES.startIx=i; if(SIDES.endIx>=0&&SIDES.endIx<i)SIDES.endIx=-1; saveRange(); renderSides(); boothRefresh(); }
 function setEnd(i){ SIDES.endIx=i; if(SIDES.startIx>i)SIDES.startIx=-1; saveRange(); renderSides(); boothRefresh(); }
-function clearRange(){ SIDES.startIx=-1; SIDES.endIx=-1; saveRange(); renderSides(); boothRefresh(); }
+function clearRange(){ SIDES.startIx=-1; SIDES.endIx=-1; SIDES.only=false; saveRange(); renderSides(); boothRefresh(); }
+/* Collapse the sides to the marked scene. Off automatically if the marks go. */
+function toggleOnly(){ SIDES.only=!SIDES.only; saveRange(); renderSides(); }
 function saveRange(){
  try{ localStorage.setItem('actor_os_range_'+(SIDES.file||'x'),
-   JSON.stringify({s:SIDES.startIx,e:SIDES.endIx,me:SIDES.me,om:SIDES.omit||[],rdy:!!SIDES.ready,pk:SIDES.pick||{}})); }catch(e){}
+   JSON.stringify({s:SIDES.startIx,e:SIDES.endIx,me:SIDES.me,om:SIDES.omit||[],rdy:!!SIDES.ready,pk:SIDES.pick||{},only:!!SIDES.only})); }catch(e){}
 }
 function loadRange(){
  try{ const r=JSON.parse(localStorage.getItem('actor_os_range_'+(SIDES.file||'x'))||'null');
-   if(r){ SIDES.startIx=r.s; SIDES.endIx=r.e; SIDES.omit=r.om||[]; SIDES.ready=!!r.rdy; SIDES.pick=r.pk||{}; } }catch(e){}
+   if(r){ SIDES.startIx=r.s; SIDES.endIx=r.e; SIDES.omit=r.om||[]; SIDES.ready=!!r.rdy; SIDES.pick=r.pk||{}; SIDES.only=!!r.only; } }catch(e){}
 }
 /* the script the take actually runs on */
 function activeScript(){
@@ -1526,11 +1549,16 @@ async function boothRefresh(){
    return arr.find(c=>c.id===sel) || arr[arr.length-1] || null; };
  const done=others.filter(b=>picked(boothKey(b))).length;
 
- let h=`<div class="take" style="margin:0 0 11px"><div><b>${done} of ${others.length} recorded</b>
+ let h=boothBusy?`<div class="recbar"><span class="recdot"></span><b>RECORDING</b>
+   <span class="rt" id="recClock">0.0s</span></div>
+   <div class="recmeter"><i id="recLevel"></i></div>`:'';
+ h+=`<div class="take" style="margin:${boothBusy?'11px 0':'0 0 11px'}"><div><b>${done} of ${others.length} recorded</b>
    <small>${done===others.length?'Every line has a take. Ready for the next stage.':'Record each line, keep the one you like.'}</small></div>
    <span class="pill" style="${done===others.length?'color:#5cae7e;border-color:#5cae7e':''}">${done===others.length?'COMPLETE':'IN PROGRESS'}</span></div>`;
  h+=`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:11px">
    <button class="ghost" onclick="boothUnready()">UNLOCK SCENE</button>
+   <button class="ghost" onclick="boothRunAll()">RECORD ALL IN SEQUENCE</button>
+   <button class="ghost" onclick="boothClear()">CLEAR RECORDINGS</button>
    ${done===others.length?`<button onclick="boothStitch()">&#9654; PLAY THE WHOLE READ</button>`:''}</div>`;
 
  h+='<div style="display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden">';
@@ -1540,7 +1568,7 @@ async function boothRefresh(){
     <div style="display:flex;gap:10px;align-items:flex-start">
       <div style="flex:1;min-width:0">
         <b style="font-size:9.5px;letter-spacing:.14em;color:var(--gold)">${esc2(b.who)}</b>
-        <div style="font-size:12.5px;margin-top:3px">${esc2(b.text)}</div>
+        <div id="ra_${k}" style="font-size:12.5px;margin-top:3px;line-height:1.55">${busy?raHTML(b.text):esc2(b.text)}</div>
       </div>
       <button class="mini ${busy?'':'ghost'}" style="${busy?'border-color:#d9694e;color:#d9694e':''}"
         onclick="boothToggle('${k}',${i})">${busy?'&#9632; STOP':(arr.length?'ANOTHER':'&#9679; REC')}</button>
@@ -1564,9 +1592,10 @@ async function boothRefresh(){
 function boothReady(){ SIDES.ready=true; saveRange(); boothRefresh(); }
 function boothUnready(){ SIDES.ready=false; saveRange(); boothRefresh(); }
 function boothPick(k,id){ SIDES.pick=SIDES.pick||{}; SIDES.pick[k]=id; saveRange(); boothRefresh(); }
+function clipGain(c){ return (c&&typeof c.gain==='number'&&isFinite(c.gain))?c.gain:1; }
 async function boothPlayId(id){
  const all=await ActorReader.all(); const c=all.find(x=>x.id===id);
- if(c)ActorReader.play(c.blob);
+ if(c)ActorReader.play(c.blob,null,clipGain(c));
 }
 async function boothDrop(k,id){
  await ActorReader.del(id);
@@ -1586,21 +1615,123 @@ async function boothStitch(){
  });
  if(!seq.length)return;
  let i=0;
- const next=()=>{ if(i>=seq.length)return; ActorReader.play(seq[i++].blob,next); };
+ const next=()=>{ if(i>=seq.length)return; const c=seq[i++]; ActorReader.play(c.blob,next,clipGain(c)); };
  next();
 }
 
+/* ===== READ-ALONG =====
+   While a reader line records, the words colour in as they are heard: white
+   ahead of you, red behind. Anything you say that is not in the line shows as a
+   separate tag rather than being silently ignored.
+
+   This is a second, independent listener running alongside the recorder. If the
+   browser has no SpeechRecognition, or refuses two mic consumers at once, the
+   recording is unaffected - the line simply does not colour. The take is the
+   thing that matters and it is never put at risk for a display effect. */
+let RA={on:false, rec:null, key:null, text:'', heard:'', t0:0, clock:null,
+        meterCtx:null, meterSrc:null, meterAn:null, meterRaf:null, unsupported:false};
+
+function raHTML(text){
+ if(!window.ActorReadAlong) return esc2(text);
+ const t=ActorReadAlong.track(text, RA.heard||'');
+ let h=ActorReadAlong.html(t, esc2);
+ if(t.extras.length) h+='<span class="ra-extra">+ '+esc2(t.extras.slice(-4).join(' '))+'</span>';
+ return h;
+}
+function raPaint(){
+ if(!RA.key) return;
+ const el=document.getElementById('ra_'+RA.key);
+ if(el) el.innerHTML=raHTML(RA.text);
+}
+function raStart(key,text){
+ RA.key=key; RA.text=text||''; RA.heard=''; RA.t0=Date.now();
+ RA.clock=setInterval(()=>{
+  const c=document.getElementById('recClock');
+  if(c) c.textContent=((Date.now()-RA.t0)/1000).toFixed(1)+'s';
+ },100);
+ raMeter();
+ const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!R){ RA.unsupported=true; return; }
+ try{
+  RA.rec=new R();
+  RA.rec.continuous=true; RA.rec.interimResults=true; RA.rec.lang='en-US';
+  RA.rec.onresult=e=>{
+   let txt='';
+   for(let i=0;i<e.results.length;i++) txt+=e.results[i][0].transcript+' ';
+   RA.heard=txt.trim();
+   raPaint();
+  };
+  RA.rec.onerror=()=>{};                       // never let this touch the take
+  RA.rec.onend=()=>{ if(RA.on){ try{ RA.rec.start(); }catch(e){} } };
+  RA.rec.start(); RA.on=true;
+ }catch(e){ RA.on=false; RA.rec=null; }
+}
+function raStop(){
+ RA.on=false;
+ try{ if(RA.rec){ RA.rec.onend=null; RA.rec.stop(); } }catch(e){}
+ RA.rec=null;
+ if(RA.clock){ clearInterval(RA.clock); RA.clock=null; }
+ raMeterStop();
+ RA.key=null; RA.heard=''; RA.text='';
+}
+/* Level meter straight off the recording mic, so 'am I being heard' is answered
+   by the actual signal rather than by a spinning icon. */
+function raMeter(){
+ try{
+  const mic=ActorReader.micStream&&ActorReader.micStream();
+  if(!mic) return;
+  const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+  const ctx=new AC(); RA.meterCtx=ctx;
+  // these MUST stay referenced. A MediaStreamAudioSourceNode held only by a
+  // local goes out of scope, gets collected, and the analyser quietly reads
+  // silence forever - the meter sits at zero while the mic is working fine.
+  RA.meterSrc=ctx.createMediaStreamSource(mic);
+  RA.meterAn=ctx.createAnalyser(); RA.meterAn.fftSize=512;
+  RA.meterSrc.connect(RA.meterAn);
+  const an=RA.meterAn;
+  const buf=new Uint8Array(an.fftSize);
+  // setInterval, not requestAnimationFrame: rAF gets throttled whenever the
+  // browser decides the page is not worth painting, and a recording indicator
+  // that silently stops moving is worse than none at all. 25 Hz is plenty.
+  let held=0;
+  RA.meterRaf=setInterval(()=>{
+   an.getByteTimeDomainData(buf);
+   let peak=0;
+   for(let i=0;i<buf.length;i++){ const v=Math.abs(buf[i]-128)/128; if(v>peak)peak=v; }
+   held = peak>held ? peak : held*0.82 + peak*0.18;   // fast attack, slow release
+   const bar=document.getElementById('recLevel');
+   if(bar) bar.style.width=Math.min(100,Math.round(held*180))+'%';
+  },40);
+ }catch(e){}
+}
+function raMeterStop(){
+ if(RA.meterRaf){ clearInterval(RA.meterRaf); RA.meterRaf=null; }
+ try{ if(RA.meterSrc) RA.meterSrc.disconnect(); }catch(e){}
+ try{ if(RA.meterCtx) RA.meterCtx.close(); }catch(e){}
+ RA.meterCtx=RA.meterSrc=RA.meterAn=null;
+}
 async function boothToggle(k,i){
  if(boothBusy===k){
+  raStop();
   const blob=await ActorReader.stop();
   const dur=blob?await ActorReader.duration(blob):0;
-  if(blob&&blob.size) await ActorReader.putTakeFor(k,blob,{dur:dur});
+  // measure once, here, so every line plays back at the same loudness later
+  const lvl=blob?await ActorReader.measure(blob):null;
+  if(blob&&blob.size) await ActorReader.putTakeFor(k,blob,
+    {dur:dur, gain:(lvl&&lvl.gain)||1, rms:(lvl&&lvl.rms)||0, silent:!!(lvl&&lvl.silent)});
   boothBusy=null; await boothRefresh();
   if(boothSeq) boothNext();
   return;
  }
- if(boothBusy){ await ActorReader.stop(); boothBusy=null; }
- try{ await ActorReader.start(); boothBusy=k; await boothRefresh(); }
+ if(boothBusy){ raStop(); await ActorReader.stop(); boothBusy=null; }
+ try{
+  await ActorReader.start(); boothBusy=k;
+  try{ ActorReader.unlockAudio(); }catch(e){}
+  await boothRefresh();
+  const line=(activeScript().filter(b=>!b.mine&&(SIDES.omit||[]).indexOf(b.who)<0)
+              .find(b=>boothKey(b)===k));
+  raStart(k, line?line.text:'');
+ }
  catch(e){ alert('Microphone unavailable: '+e.message); }
 }
 async function boothRunAll(){
@@ -1789,7 +1920,7 @@ function speakPartner(){
     <div class="sCue" style="color:#E0A23C">not recorded &middot; tap &#9654; to step past</div>`;
   return;
  }
- ActorReader.play(c.blob, ()=>{ if(MODE==='PARTNER') stageStep(1); });
+ ActorReader.play(c.blob, ()=>{ if(MODE==='PARTNER') stageStep(1); }, clipGain(c));
 }
 /* Three seconds to get set. You press record, the count runs on screen, then it
    rolls. Nothing is captured during the count - the take starts clean at zero. */
