@@ -39,7 +39,8 @@ across the top &mdash; the same signal a camera gives when it is the one that is
 | **SAVE** | Get the performance onto the phone before anything else. Every take is marked saved or browser-only. |
 | **CUT** | Pick the take, set the handles, choose a size. Real re-encode &mdash; trim and compress in one step, no second app. |
 | **CUT (old)** | Takes marked DROP / HOLD / SURVIVOR. Non-destructive trim against an untouched master. Video is held in IndexedDB, so takes survive a reload. |
-| **SEND** | One package with a slate, the survivor take, and a delivery receipt |
+| **SEND** | Not a send. A manifest: your files, named the way casting expects, confirmed on your phone. You upload them yourself. |
+| **SEND (old)** | One package with a slate, the survivor take, and a delivery receipt |
 
 ### Three ways to shoot, and you only ever see one
 

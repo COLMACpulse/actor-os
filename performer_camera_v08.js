@@ -6,10 +6,7 @@ const P={
  formatSpec(m){return {
   CASTING:{orientation:'landscape',aspect:'16:9',w:1920,h:1080,fps:30},
   SOCIAL:{orientation:'portrait',aspect:'9:16',w:1080,h:1920,fps:30},
-  /* No CINEMATIC entry. Apple exposes cinematic capture through AVFoundation
-     (isCinematicVideoCaptureEnabled on AVCaptureDeviceInput), which is native
-     only. getUserMedia returns a flat track with no disparity data, so a mode
-     named CINEMATIC here would be a lie. Shoot it in the Camera app and import. */
+  CINEMATIC:{orientation:'landscape',aspect:'16:9',w:1920,h:1080,fps:30,capabilityRequired:true}
  }[m]||this.formatSpec('CASTING')},
  async open(video,canvas){
   this.stop(); this.video=video; this.canvas=canvas; this.ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -22,77 +19,8 @@ const P={
    audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
   });
   video.srcObject=this.stream; await video.play().catch(()=>{});
-  let t=this.stream.getVideoTracks()[0];
-
-  /* An 'ideal' constraint is a request, not a result. A phone that can do more
-     will often hand back less. Ask the track what it is actually capable of and
-     push it to that ceiling before anyone records. */
-  try{
-   const caps=t.getCapabilities?t.getCapabilities():{};
-   const got=t.getSettings?t.getSettings():{};
-   const maxW=caps.width&&caps.width.max, maxH=caps.height&&caps.height.max;
-   if(maxW&&maxH&&(maxW>(got.width||0))){
-    const fps=Math.min(s.fps,(caps.frameRate&&caps.frameRate.max)||s.fps);
-    await t.applyConstraints({width:{ideal:maxW},height:{ideal:maxH},frameRate:{ideal:fps}}).catch(()=>{});
-    t=this.stream.getVideoTracks()[0];
-   }
-  }catch(e){}
-
-  this.report=this.buildReport(t,{w:wantW,h:wantH,fps:s.fps});
-  return Object.assign({cinematicNative:false},this.report);
- },
-
- /* What the browser will actually record into. */
- recorderCodec(){
-  const list=[['H.264 / MP4','video/mp4;codecs=avc1.4d002a,mp4a.40.2'],['H.264 / MP4','video/mp4;codecs=avc1'],
-              ['MP4','video/mp4'],['VP9 / WebM','video/webm;codecs=vp9,opus'],['WebM','video/webm']];
-  for(const [label,m] of list){
-   try{ if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)) return {label,mime:m}; }catch(e){}
-  }
-  return {label:'unknown',mime:''};
- },
-
- /* The resolutions this device will actually give, not a hardcoded menu.
-    Highest first, filtered to what the track reports it can do. */
- offeredSizes(){
-  const caps=(this.report&&this.report.capabilities)||{};
-  const maxW=(caps.width&&caps.width.max)||0, maxH=(caps.height&&caps.height.max)||0;
-  if(!maxW) return [];
-  const rungs=[[3840,2160,'4K'],[2560,1440,'1440p'],[1920,1080,'1080p'],[1280,720,'720p']];
-  const out=rungs.filter(r=>r[0]<=maxW&&r[1]<=maxH);
-  if(!out.length||out[0][0]<maxW) out.unshift([maxW,maxH,maxW+'\u00d7'+maxH]);
-  return out;
- },
- async setSize(w,h,fps){
-  const t=this.stream&&this.stream.getVideoTracks()[0]; if(!t) return null;
-  const caps=t.getCapabilities?t.getCapabilities():{};
-  const capFps=(caps.frameRate&&caps.frameRate.max)||30;
-  await t.applyConstraints({width:{ideal:w},height:{ideal:h},
-    frameRate:{ideal:Math.min(fps||30,capFps)}}).catch(()=>{});
-  this.report=this.buildReport(t,{w,h,fps:fps||30});
-  this.report.sizeChosen=true;   // the operator picked this; it is not a shortfall
-  return this.report;
- },
-
- /* Everything measured, nothing assumed. Any field the device does not report
-    is absent rather than guessed. */
- buildReport(track,asked){
-  const st=(track&&track.getSettings)?track.getSettings():{};
-  const caps=(track&&track.getCapabilities)?track.getCapabilities():{};
-  const controls={};
-  ['zoom','torch','focusMode','focusDistance','exposureMode','exposureCompensation',
-   'whiteBalanceMode','iso','pointsOfInterest'].forEach(k=>{ if(caps[k]!==undefined) controls[k]=caps[k]; });
-  const gw=st.width||0, gh=st.height||0;
-  return {
-   asked, settings:st, capabilities:caps, controls,
-   granted:{w:gw,h:gh,fps:Math.round(st.frameRate||0),facing:st.facingMode||'',
-            aspect:(gw&&gh)?(Math.round((gw/gh)*100)/100):0},
-   ceiling:{w:(caps.width&&caps.width.max)||0,h:(caps.height&&caps.height.max)||0,
-            fps:(caps.frameRate&&caps.frameRate.max)||0},
-   codec:this.recorderCodec(),
-   shortfall: gw>0 && gw<asked.w,
-   atCeiling: !!(caps.width&&caps.width.max&&gw>=caps.width.max)
-  };
+  const t=this.stream.getVideoTracks()[0];
+  return {settings:t.getSettings?.()||{},capabilities:t.getCapabilities?.()||{},cinematicNative:false};
  },
  stop(){if(this.stream)this.stream.getTracks().forEach(t=>t.stop());this.stream=null},
  async switchFacing(){this.facing=this.facing==='user'?'environment':'user';return this.open(this.video,this.canvas)},
