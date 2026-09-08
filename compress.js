@@ -86,5 +86,86 @@ A.process=async function(blob,opts){
          from:blob.size, to:out.size,
          saved:Math.round((1-out.size/Math.max(1,blob.size))*100)};
 };
+/* ===== STITCH =====
+   Some offices want every take as its own file; some want one file with the slate
+   on the front. This plays each clip through a canvas in sequence and records the
+   whole run as a single video.
+
+   It re-encodes in real time, so the cost is the sum of the clips - three ninety
+   second takes plus a slate is about five minutes. There is no faster path in a
+   browser without a native encoder.
+
+   Hard cuts only. Casting instructions routinely say no cross-fades, so the join
+   is either a straight cut or a beat of black, never a dissolve. */
+A.stitch=async function(items,opts){
+ const o=Object.assign({h:1080,mbps:8,gapMs:0,onProgress:null},opts||{});
+ if(!items.length)throw new Error('nothing to join');
+ // measure first so the canvas is sized once and never rescales mid-run
+ const vids=[];
+ for(const it of items){
+  const v=document.createElement('video');
+  v.src=URL.createObjectURL(it.blob); v.preload='auto'; v.playsInline=true;
+  await new Promise((res,rej)=>{ v.onloadedmetadata=res; v.onerror=()=>rej(new Error('cannot read '+(it.name||'a clip'))); });
+  vids.push({v:v,name:it.name});
+ }
+ const src=vids[0].v;
+ const outH=Math.min(o.h,src.videoHeight||o.h);
+ const outW=Math.round((src.videoWidth/src.videoHeight)*outH/2)*2;
+ const cvs=document.createElement('canvas'); cvs.width=outW; cvs.height=outH;
+ const ctx=cvs.getContext('2d');
+ const stream=cvs.captureStream(30);
+
+ // one audio destination the whole run mixes into, so the track never stops
+ const AC=window.AudioContext||window.webkitAudioContext;
+ const ac=new AC(); const dest=ac.createMediaStreamDestination();
+ dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+
+ const m=A.mime();
+ const rec = m ? new MediaRecorder(stream,{mimeType:m,videoBitsPerSecond:Math.round(o.mbps*1000000),audioBitsPerSecond:128000})
+               : new MediaRecorder(stream);
+ const chunks=[]; rec.ondataavailable=e=>{ if(e.data.size)chunks.push(e.data); };
+ const done=new Promise(res=>{ rec.onstop=()=>res(new Blob(chunks,{type:rec.mimeType||'video/mp4'})); });
+ rec.start();
+
+ const total=vids.reduce((n,x)=>n+(isFinite(x.v.duration)?x.v.duration:0),0)||1;
+ let elapsed=0;
+ for(let i=0;i<vids.length;i++){
+  const v=vids[i].v;
+  let node=null;
+  try{ node=ac.createMediaElementSource(v); node.connect(dest); }catch(e){}
+  v.currentTime=0;
+  await new Promise(r=>{ const h=()=>{v.removeEventListener('seeked',h);r();}; v.addEventListener('seeked',h); });
+  await v.play().catch(()=>{});
+  await new Promise(resolve=>{
+   const tick=()=>{
+    if(v.ended||v.currentTime>=(v.duration-0.05)){ resolve(); return; }
+    ctx.drawImage(v,0,0,outW,outH);
+    if(o.onProgress)o.onProgress(Math.min(1,(elapsed+v.currentTime)/total), vids[i].name);
+    requestAnimationFrame(tick);
+   };
+   requestAnimationFrame(tick);
+  });
+  try{ v.pause(); }catch(e){}
+  elapsed+=isFinite(v.duration)?v.duration:0;
+  try{ if(node)node.disconnect(); }catch(e){}
+  // a beat of black between clips, never a dissolve
+  if(o.gapMs && i<vids.length-1){
+   const t0=performance.now();
+   await new Promise(resolve=>{
+    const tick=()=>{
+     if(performance.now()-t0>=o.gapMs){ resolve(); return; }
+     ctx.fillStyle='#000'; ctx.fillRect(0,0,outW,outH);
+     requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+   });
+  }
+ }
+ rec.stop();
+ const out=await done;
+ vids.forEach(x=>{ try{URL.revokeObjectURL(x.v.src);}catch(e){} });
+ try{ ac.close(); }catch(e){}
+ return {blob:out,width:outW,height:outH,seconds:Math.round(total*10)/10,count:items.length};
+};
 g.ActorCompress=A;
 })(window);
