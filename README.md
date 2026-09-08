@@ -170,7 +170,15 @@ This matters more than convenience: **the handwritten START and END marks are in
 They are images in the file and never appear in the extracted text, so the page is
 the only place to check them.
 
-The pages are **drawn from the extracted positions** &mdash; a screenplay page is
+The **original document** is shown, one frame per page pointed at `#page=N` &mdash;
+a single frame asked for the whole file only ever renders page one.
+
+This is the real page: the casting logo, the watermark, and anything written by
+hand. If a phone refuses to show PDFs inline, **SAVE THE ORIGINAL FILE** sits at
+the bottom of the same view and hands it to your own viewer.
+
+The older text redraw is still there for quick reading &mdash; it was drawn from
+extracted positions &mdash; a screenplay page is
 monospace text at known coordinates on white, and the parser already knows every
 line and where it sits. No rasterizer, no library.
 
