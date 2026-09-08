@@ -198,5 +198,22 @@ A.delTake=async function(id){
   tx.objectStore(TAKES).delete(id); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false);
  });
 };
+/* the original sides, kept so you can look at the real page - the handwritten
+   START/END marks are ink and never appear in the extracted text */
+A.putDoc=async function(name,blob){
+ const db=await open();
+ return new Promise((res,rej)=>{
+  const tx=db.transaction(TAKES,'readwrite');
+  tx.objectStore(TAKES).put({id:'doc:'+name,blob,at:Date.now()});
+  tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error);
+ });
+};
+A.getDoc=async function(name){
+ const db=await open();
+ return new Promise(res=>{
+  const q=db.transaction(TAKES,'readonly').objectStore(TAKES).get('doc:'+name);
+  q.onsuccess=()=>res(q.result?q.result.blob:null); q.onerror=()=>res(null);
+ });
+};
 g.ActorReader=A;
 })(window);

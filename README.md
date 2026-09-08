@@ -161,6 +161,17 @@ so re-uploading the same sides keeps the recordings.
 If a line has no recording the take says **"not recorded"** rather than
 substituting a machine voice.
 
+## Looking at the actual sides
+
+The original PDF is kept, not just the text pulled out of it. Tap the file chip in
+PREP and the real pages open full screen.
+
+This matters more than convenience: **the handwritten START and END marks are ink.**
+They are images in the file and never appear in the extracted text, so the page is
+the only place to check them.
+
+Read-only for now &mdash; no mark-up.
+
 ## Reading a PDF
 
 Sides arrive as PDFs, so the app reads them directly. No library — browsers ship
