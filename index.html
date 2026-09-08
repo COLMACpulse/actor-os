@@ -225,7 +225,7 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
 <button data-tab="save"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="M8 11l4 4 4-4"/><path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><b>SAVE</b><s data-dot="save"></s></button>
 <button data-tab="send"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10.5 13.5"/><path d="M21 3l-7 18-3.5-7.5L3 10z"/></svg><b>SEND</b><s data-dot="send"></s></button>
 </nav>
-<div id="jobBlock" style="display:none"><div><h2 id="jobTitle">Untitled Performance</h2><p id="jobMeta">AUDITION · Scene 1</p></div><button onclick="editJob()">EDIT JOB</button></div>
+<div id="jobBlock" style="display:none"><div><h2 id="jobTitle" onclick="renameJob()" title="tap to rename" style="cursor:pointer">Untitled Performance</h2><p id="jobMeta">AUDITION · Scene 1</p></div><button onclick="renameJob()">RENAME</button></div>
 </div>
 <section id="prep" class="panel on">
 <div class="am">Everything here is optional. PREP supports the work; it does not gate RECORD.</div>
@@ -492,7 +492,7 @@ $('sidesFile').addEventListener('change',async e=>{
  $('sidesOut').innerHTML='<div class="am">Reading '+esc2(f.name)+'&hellip;</div>';
  try{
   const ex=await ActorPDF.extract(await f.arrayBuffer());
-  window.LAST_PDF=ex;                       // keep it so the diagnostic can show it
+  window.LAST_PDF=ex; window.PDF_LINES=(ex.lines||[]).map(l=>l.text);                       // keep it so the diagnostic can show it
   if(ex.encrypted && !ex.chars){
    return pdfProblem(f,ex,'That PDF is protected.',
      'Studio sides are often locked against copying, which means the text cannot be read out of the file. Open it, select all, and use PASTE INSTEAD.');
@@ -587,6 +587,7 @@ function loadSides(text,fname){
  if(!SIDES.speakers.length){
   $('sidesOut').innerHTML='<div class="am" style="border-color:#d9694e">Could not find any character names. Sides usually look like <b>NAME</b> on its own line, or <b>NAME:</b> before the line.</div>';
   return;}
+ if(!jobName()){ const g=guessJobName(); if(g) setJobName(g); }
  const guess=guessMe(SIDES.file,SIDES.speakers);
  if(guess&&!SIDES.me){ pickMe(guess); return; }
  SIDES.me=SIDES.me||'';
@@ -601,13 +602,13 @@ function pickMe(n){
   const near=SIDES.script.findIndex(b=>b.mine);
   SIDES.startIx=near>=0?near:0;
  }
- renderSides(); boothRefresh(); try{namePreview();}catch(e){}
+ renderSides(); boothRefresh(); try{namePreview();paintJob();}catch(e){}
 }
 function omitChar(n){
  SIDES.omit=SIDES.omit||[];
  if(SIDES.omit.indexOf(n)<0)SIDES.omit.push(n);
  if(SIDES.me===n)SIDES.me='';
- saveRange(); renderSides(); boothRefresh(); try{namePreview();}catch(e){}
+ saveRange(); renderSides(); boothRefresh(); try{namePreview();paintJob();}catch(e){}
 }
 function unomitAll(){ SIDES.omit=[]; saveRange(); renderSides(); boothRefresh(); }
 function visibleSpeakers(){
@@ -890,7 +891,7 @@ async function checkBackground(){
 /* The nav reports where the work actually is, so the row is a status line rather
    than five tabs. Nothing here decides anything - it reflects. */
 function navState(){
- try{jobBlockState();}catch(e){}
+ try{jobBlockState();paintJob();}catch(e){}
  const set=(k,cls)=>{ const el=document.querySelector('[data-dot="'+k+'"]');
    if(el&&el.classList){ el.classList.remove('started','done'); if(cls)el.classList.add(cls); } };
  const st=(typeof state!=='undefined'&&state)?state:null;
@@ -1281,10 +1282,61 @@ function goTab(t){
  if(b&&b.click)b.click();
 }
 function jobBlockState(){
+ try{const t=$('jobTitle');if(t&&t.textContent!==undefined&&jobName())t.textContent=jobName();}catch(e){}
  const el=$('jobBlock'); if(!el||!el.style)return;
  const S=(typeof SIDES!=='undefined')?SIDES:null;
  const has=!!(S&&S.script&&S.script.length) || !!(typeof state!=='undefined'&&state&&state.takes&&state.takes.length);
  el.style.display=has?'':'none';
+}
+
+
+/* The project name. Guessed from the sides when they load - Breakdown Services
+   names the file after the role, and the header line inside carries the show -
+   but it is only a guess, so it stays editable. */
+function jobName(){ return (state.job&&state.job.title)||''; }
+function setJobName(v){
+ state.job=state.job||{};
+ state.job.title=(v||'').trim();
+ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+ paintJob();
+}
+function paintJob(){
+ const t=$('jobTitle');
+ if(t&&t.textContent!==undefined) t.textContent=jobName()||'Untitled Performance';
+ const m=$('jobMeta');
+ if(m&&m.textContent!==undefined){
+  const r=(typeof currentRole==='function'?currentRole():'')||'';
+  m.textContent=(r?r.toUpperCase():'PERFORMANCE')+' \u00b7 Scene '+(state.scene||1);
+ }
+ try{ jobBlockState(); }catch(e){}
+}
+function renameJob(){
+ const v=prompt('What is this job?', jobName()||guessJobName()||'');
+ if(v===null)return;
+ setJobName(v);
+}
+/* Two places to look: the production line the sides carry, and the filename. */
+function guessJobName(){
+ try{
+  // the production line sits in the page header: "CIA #02005  Studio/Network Draft"
+  const raw=window.PDF_LINES||[];
+  for(const t of raw.slice(0,40)){
+   const m=String(t||'').match(/^([A-Z][A-Z0-9 '&.\-]{1,40}?)\s+#\s?\d{3,}/);
+   if(m && m[1].trim().length>1) return m[1].trim();
+  }
+  if(typeof SIDES!=='undefined' && SIDES.beats){
+   for(const b of SIDES.beats.slice(0,14)){
+    const m=String(b.text||'').match(/^([A-Z][A-Z0-9 '&.\-]{2,40})\s+#?\d{3,}/);
+    if(m) return m[1].trim();
+   }
+  }
+  const f=(typeof SIDES!=='undefined'&&SIDES.file)||'';
+  if(f){
+   return f.replace(/\.[^.]+$/,'').replace(/[_\-]+/g,' ')
+           .replace(/\(\d+\)/g,'').replace(/\s+/g,' ').trim();
+  }
+ }catch(e){}
+ return '';
 }
 
 /* ===== READER BOOTH UI ===== */

@@ -1,9 +1,0 @@
-node_modules/
-__pycache__/
-.pytest_cache/
-.DS_Store
-Thumbs.db
-*.mp4
-*.mov
-*.webm
-SHA256SUMS*.txt
