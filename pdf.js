@@ -257,10 +257,11 @@ A.extract=async function(arrayBuffer){
     const c=ch.charCodeAt(0);
     return (cmap[c]!==undefined)?cmap[c]:ch; }).join('')})));
  }
- const lines=pages.reduce((acc,pg)=>acc.concat(toLines(pg)),[]);
+ const perPage=pages.map(pg=>toLines(pg));
+ const lines=perPage.reduce((acc,pg)=>acc.concat(pg),[]);
  const allTxt=lines.map(l=>l.text).join('');
  const pr=(allTxt.match(/[\x20-\x7e]/g)||[]).length/Math.max(1,allTxt.length);
- return {lines, chars:allTxt.length, printable:Math.round(pr*100)/100,
+ return {lines, pages:perPage, chars:allTxt.length, printable:Math.round(pr*100)/100,
          cmapEntries:Object.keys(cmap).length, streams:streams.length,
          encrypted:encrypted, version:version,
          images:(all.match(/\/Subtype\s*\/Image/g)||[]).length};

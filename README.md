@@ -170,6 +170,15 @@ This matters more than convenience: **the handwritten START and END marks are in
 They are images in the file and never appear in the extracted text, so the page is
 the only place to check them.
 
+The pages are **drawn from the extracted positions** &mdash; a screenplay page is
+monospace text at known coordinates on white, and the parser already knows every
+line and where it sits. No rasterizer, no library.
+
+What it shows: every word, where it sits, laid out as the sides are. What it
+cannot: the casting logo, the diagonal watermark, and anything written by hand &mdash;
+those are images. **SAVE THE ORIGINAL FILE** is one tap away in the same view, for
+when you need to check a handwritten mark.
+
 Two ways to look at them. The in-app view reflows the text so it fits any screen
 in either orientation and scrolls through the whole document. **OPEN THE PDF**
 hands the file to your phone's own viewer, which pages and pinch-zooms properly &mdash;
