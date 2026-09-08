@@ -200,6 +200,15 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
 .truth{font:10px var(--mono);color:var(--go);text-align:right}
 @media(max-width:700px){.slatebar{display:none}header{grid-template-columns:58px 1fr auto}}
 @media(max-width:560px){header{grid-template-columns:46px 1fr}.sig{width:44px;height:44px}.truth{grid-column:1/-1;text-align:left}}
+.prevwrap{position:relative;width:100%;aspect-ratio:var(--capAR,16/9);background:#000;border:1px solid var(--line2);border-radius:12px;overflow:hidden;max-height:56vh;margin:0 auto}
+.prevwrap video{width:100%;height:100%;object-fit:cover;display:block}
+.prevoff{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;background:#0d0f12}
+.prevoff span{font-size:11.5px;color:var(--faint);letter-spacing:.04em}
+.prevbar{position:absolute;left:10px;right:10px;bottom:10px;border-radius:8px;padding:9px 12px;font:500 11.5px/1.45 var(--mono,ui-monospace);display:none}
+.prevbar.on{display:block;background:rgba(217,105,78,.94);color:#fff}
+.prevbar.on.check{background:rgba(224,162,60,.94);color:#12100c}
+.mobilebar{display:none}
+@media(max-width:700px){.mobilebar{display:block;width:100%;height:16px;border-radius:0;margin:0 0 4px;opacity:.9;box-shadow:inset 0 0 0 1px #00000055}}
 </style></head><body><div class="app"><header><!-- ACTOR OS sigil. Raster because the mark is a gold-gradient render, not a
      flat shape; alpha-trimmed and unpremultiplied so the edges stay gold on
      the dark plate. 156px source for a 52px slot (3x). -->
@@ -208,6 +217,7 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
      the header gives it at any zoom without a raster asset. Hidden on mobile,
      where there is no negative space to fill. -->
 <svg class="slatebar" height="30" preserveAspectRatio="none" aria-hidden="true" focusable="false"><defs><pattern id="clap" width="176" height="30" patternUnits="userSpaceOnUse"><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#2b3038" transform="translate(-22)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#1f8a5c" transform="translate(0)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#d9b23a" transform="translate(22)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#2a5fa8" transform="translate(44)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#c0392b" transform="translate(66)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#e8e6e0" transform="translate(88)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#9aa0a8" transform="translate(110)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#5c636d" transform="translate(132)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#2b3038" transform="translate(154)"/></pattern></defs><rect width="100%" height="30" fill="url(#clap)"/></svg><div class="truth">THE ACTOR IS THE MACHINE<br><span id="saveState">LOCAL STATE · READY</span></div></header>
+<svg class="slatebar mobilebar" height="30" preserveAspectRatio="none" aria-hidden="true" focusable="false"><defs><pattern id="clapm" width="176" height="30" patternUnits="userSpaceOnUse"><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#2b3038" transform="translate(-22)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#1f8a5c" transform="translate(0)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#d9b23a" transform="translate(22)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#2a5fa8" transform="translate(44)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#c0392b" transform="translate(66)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#e8e6e0" transform="translate(88)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#9aa0a8" transform="translate(110)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#5c636d" transform="translate(132)"/><path d="M0 0h22l11 15l-11 15H0l11-15Z" fill="#2b3038" transform="translate(154)"/></pattern></defs><rect width="100%" height="30" fill="url(#clapm)"/></svg>
 <nav>
 <button data-tab="prep" class="on"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/></svg><b>PREP</b><s data-dot="prep"></s></button>
 <button data-tab="shoot"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 4v4M20 12h-4M12 20v-4M4 12h4"/></svg><b>SHOOT</b><s data-dot="shoot"></s></button>
@@ -297,6 +307,7 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
     <button class="sRec" id="sRec" onclick="stageRec()" aria-label="record"></button>
   </div>
 </div>
+</section>
 <section id="shoot" class="panel">
 <div id="modePick">
   <div class="prevwrap">
