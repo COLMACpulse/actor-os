@@ -339,5 +339,10 @@ keep serving the old build with no sign anything changed.
 
 ## Built with
 
-Nothing. No framework, no build step, no dependencies. Plain HTML, CSS and
-JavaScript in a folder.
+Plain HTML, CSS and JavaScript in a folder. No framework, no build step.
+
+One vendored library: `pdf.js`, for showing your sides. Six routes were tried
+without it and every one failed on iOS &mdash; an inline frame renders page one only,
+`#page=N` is ignored, a blob will not open in a tab from a home-screen app, and
+the share sheet is a *send* menu, not a viewer. It lives in `vendor/`, is cached
+offline, and calls nothing.
