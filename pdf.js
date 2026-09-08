@@ -127,7 +127,7 @@ function readContent(txt){
      let v='';
      if(a[0]==='(') v=unesc(a.slice(1,-1));
      else if(a[0]==='<') v=hexStr(a);
-     if(v)items.push({x:tx,y:ty,s:v,font:curFont});
+     if(v)items.push({x:tx,y:ty,s:fixPunct(v),font:curFont});
      if(t!=='Tj')ty-=lead;
      break; }
    case 'TJ': {
@@ -141,7 +141,7 @@ function readContent(txt){
          else if(v[0]==='<') out+=hexStr(v);
          else if(parseFloat(v)<-120) out+=' ';
        }
-       if(out)items.push({x:tx,y:ty,s:out,font:curFont});
+       if(out)items.push({x:tx,y:ty,s:fixPunct(out),font:curFont});
      }
      break; }
   }
@@ -156,6 +156,29 @@ function hexStr(tok){
  for(let i=0;i+1<h.length;i+=4){
   const v=parseInt(h.substr(i,4),16);
   if(!isNaN(v)) out+=String.fromCharCode(v);
+ }
+ return out;
+}
+/* Screenplay PDFs are routinely typeset in MacRoman-encoded Courier, where the
+   curly quotes and dashes sit at byte values that latin1 reads as accented
+   capitals. Left unmapped, every contraction comes out as "WeÕll".
+   Only the punctuation is remapped - the letters are the same in both. */
+const MACPUNCT={
+ 0xD0:'\u2013', 0xD1:'\u2014',            // en dash, em dash
+ 0xD2:'\u201c', 0xD3:'\u201d',            // curly double quotes
+ 0xD4:'\u2018', 0xD5:'\u2019',            // curly single quotes
+ 0xC9:'\u2026', 0xA5:'\u2022',            // ellipsis, bullet
+ 0xD6:'\u00f7', 0xC5:'\u2248',
+ 0x92:'\u2019', 0x91:'\u2018',            // windows-1252, same problem
+ 0x93:'\u201c', 0x94:'\u201d',
+ 0x96:'\u2013', 0x97:'\u2014', 0x85:'\u2026',
+ 0x03:' '                                 // stray control from a subset font
+};
+function fixPunct(t){
+ let out='';
+ for(const ch of t){
+  const c=ch.charCodeAt(0);
+  out += (MACPUNCT[c]!==undefined) ? MACPUNCT[c] : ch;
  }
  return out;
 }
