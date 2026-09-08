@@ -93,13 +93,16 @@ A.start=async function(){
  rec.start();
  return true;
 };
-A.stop=function(){
+A.stop=function(opts){
+ const keep=opts&&opts.keepMic;
  return new Promise(res=>{
-  if(!rec||rec.state==='inactive')return res(null);
-  rec.onstop=()=>res(new Blob(chunks,{type:rec.mimeType||'audio/webm'}));
+  const done=b=>{ if(!keep)A.disarm(); res(b); };
+  if(!rec||rec.state==='inactive')return done(null);
+  rec.onstop=()=>done(new Blob(chunks,{type:rec.mimeType||'audio/webm'}));
   rec.stop();
  });
 };
+A.micOpen=function(){ return !!mic; };
 A.recording=function(){ return !!rec && rec.state==='recording'; };
 
 /* --- playback during a take ---
