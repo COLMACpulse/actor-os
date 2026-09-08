@@ -170,7 +170,12 @@ This matters more than convenience: **the handwritten START and END marks are in
 They are images in the file and never appear in the extracted text, so the page is
 the only place to check them.
 
-Read-only for now &mdash; no mark-up.
+Two ways to look at them. The in-app view reflows the text so it fits any screen
+in either orientation and scrolls through the whole document. **OPEN THE PDF**
+hands the file to your phone's own viewer, which pages and pinch-zooms properly &mdash;
+an inline frame on iOS only ever renders page one.
+
+The handwritten marks only appear in the PDF. Read-only for now &mdash; no mark-up.
 
 ## Reading a PDF
 
