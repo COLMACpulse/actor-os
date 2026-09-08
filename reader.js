@@ -102,17 +102,72 @@ A.stop=function(){
 };
 A.recording=function(){ return !!rec && rec.state==='recording'; };
 
-/* --- playback during a take --- */
-let el=null;
-A.play=function(blob,onended){
- A.stopPlay();
- el=new Audio(URL.createObjectURL(blob));
- el.onended=()=>{ try{URL.revokeObjectURL(el.src)}catch(e){}; if(onended)onended(); };
- el.onerror=()=>{ if(onended)onended(); };
- el.play().catch(()=>{ if(onended)onended(); });
- return el;
+/* --- playback during a take ---
+   A plain <audio> element cannot go above 1.0, and the booth records with
+   auto-gain off on purpose, so a quiet reading plays back near silent. Route it
+   through Web Audio instead: normalise to a target peak, add a little compression
+   so quiet lines come up, and allow real gain above unity.
+   iOS also routes audio to the earpiece while a mic stream is open, so the mic is
+   released before playback. */
+let el=null, actx=null, curSrc=null, curGain=null;
+let USER_GAIN=1.6;
+A.setGain=function(g){ USER_GAIN=Math.max(0.5,Math.min(6,g||1)); try{localStorage.setItem('actor_os_readergain',String(USER_GAIN));}catch(e){} };
+A.getGain=function(){ try{const v=parseFloat(localStorage.getItem('actor_os_readergain'));if(v)USER_GAIN=v;}catch(e){} return USER_GAIN; };
+
+function ctx(){
+ if(!actx){ const C=window.AudioContext||window.webkitAudioContext; actx=new C(); }
+ if(actx.state==='suspended'){ try{actx.resume();}catch(e){} }
+ return actx;
+}
+/* peak of the decoded audio, so normalising cannot clip */
+A.peak=async function(blob){
+ try{
+  const buf=await ctx().decodeAudioData(await blob.arrayBuffer());
+  let pk=0;
+  for(let c=0;c<buf.numberOfChannels;c++){
+   const d=buf.getChannelData(c);
+   for(let i=0;i<d.length;i+=64){ const v=Math.abs(d[i]); if(v>pk)pk=v; }
+  }
+  return pk||0;
+ }catch(e){ return 0; }
 };
-A.stopPlay=function(){ if(el){try{el.pause();URL.revokeObjectURL(el.src)}catch(e){} el=null;} };
+A.play=async function(blob,onended){
+ A.stopPlay();
+ // the mic holds the route to the earpiece on iOS - let it go before playing
+ try{ if(mic && !A.recording()) A.disarm(); }catch(e){}
+ A.getGain();
+ try{
+  const c=ctx();
+  const buf=await c.decodeAudioData(await blob.arrayBuffer());
+  let pk=0;
+  const d0=buf.getChannelData(0);
+  for(let i=0;i<d0.length;i+=64){ const v=Math.abs(d0[i]); if(v>pk)pk=v; }
+  // bring the loudest point up to about -1.5 dBFS, then apply the user's gain
+  const norm = pk>0.0001 ? Math.min(12, 0.84/pk) : 1;
+  const src=c.createBufferSource(); src.buffer=buf;
+  const g=c.createGain(); g.gain.value=norm*USER_GAIN;
+  const comp=c.createDynamicsCompressor();
+  comp.threshold.value=-18; comp.knee.value=12; comp.ratio.value=3;
+  comp.attack.value=0.004; comp.release.value=0.18;
+  src.connect(g); g.connect(comp); comp.connect(c.destination);
+  src.onended=()=>{ curSrc=null; if(onended)onended(); };
+  src.start(0);
+  curSrc=src; curGain=g;
+  return src;
+ }catch(e){
+  // fall back to the element if Web Audio cannot decode this container
+  el=new Audio(URL.createObjectURL(blob));
+  el.volume=1;
+  el.onended=()=>{ try{URL.revokeObjectURL(el.src)}catch(e2){}; if(onended)onended(); };
+  el.onerror=()=>{ if(onended)onended(); };
+  el.play().catch(()=>{ if(onended)onended(); });
+  return el;
+ }
+};
+A.stopPlay=function(){
+ if(curSrc){ try{curSrc.onended=null;curSrc.stop();}catch(e){} curSrc=null; }
+ if(el){ try{el.pause();URL.revokeObjectURL(el.src);}catch(e){} el=null; }
+};
 A.duration=function(blob){
  return new Promise(res=>{
   const a=new Audio(URL.createObjectURL(blob));
