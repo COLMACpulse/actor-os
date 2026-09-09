@@ -2,7 +2,7 @@
 (function(g){
 'use strict';
 const P={
- stream:null,video:null,canvas:null,ctx:null,facing:'environment',format:'CASTING',assist:'PARTNER_MARK',coach:true,
+ stream:null,video:null,canvas:null,ctx:null,facing:'environment',deviceId:null,micId:null,format:'CASTING',assist:'PARTNER_MARK',coach:true,
  formatSpec(m){return {
   CASTING:{orientation:'landscape',aspect:'16:9',w:1920,h:1080,fps:30},
   SOCIAL:{orientation:'portrait',aspect:'9:16',w:1080,h:1920,fps:30},
@@ -14,10 +14,25 @@ const P={
   // the slate move crops in, so it needs pixels to spend - ask for the largest
   // frame the device will give when it is enabled
   const wantW=this.wantMax?3840:s.w, wantH=this.wantMax?2160:s.h;
-  this.stream=await navigator.mediaDevices.getUserMedia({
-   video:{facingMode:{ideal:this.facing},width:{ideal:wantW},height:{ideal:wantH},frameRate:{ideal:s.fps}},
-   audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
-  });
+  /* A camera chosen by name wins over which way it faces. On a computer the lid
+     camera and the good one on a stand both face you, so facingMode cannot tell
+     them apart - only the device id can. */
+  const vc={width:{ideal:wantW},height:{ideal:wantH},frameRate:{ideal:s.fps}};
+  if(this.deviceId) vc.deviceId={exact:this.deviceId};
+  else vc.facingMode={ideal:this.facing};
+  const ac={echoCancellation:false,noiseSuppression:false,autoGainControl:false};
+  if(this.micId) ac.deviceId={exact:this.micId};
+  try{
+   this.stream=await navigator.mediaDevices.getUserMedia({video:vc,audio:ac});
+  }catch(e){
+   /* A remembered camera that has been unplugged must not take the app down with
+      it. Forget it and open whatever is actually there. */
+   if(this.deviceId||this.micId){ this.deviceId=null; this.micId=null;
+    this.stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:this.facing},width:{ideal:wantW},height:{ideal:wantH},frameRate:{ideal:s.fps}},
+      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+   } else throw e;
+  }
   video.srcObject=this.stream; await video.play().catch(()=>{});
   const t=this.stream.getVideoTracks()[0];
   return {settings:t.getSettings?.()||{},capabilities:t.getCapabilities?.()||{},cinematicNative:false};

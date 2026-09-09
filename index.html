@@ -267,10 +267,10 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
    it is the biggest target on the phone and it is there for the moment the partner
    goes quiet. It cannot stop your take. <b>Stopping is the round button</b>, the same
    as the camera app: one press, on purpose.</p>
-   <p>A bad take is one press. <b>ERASE</b> deletes it &mdash; off the phone, out of the
+   <p>A bad take is one press. <b>ERASE</b> deletes it &mdash; off the <span class="dvn">phone</span>, out of the
    database, gone &mdash; and puts you back at the top of the scene. <b>GO AGAIN</b> keeps
    it and resets. Nothing here needs a clicker; one just makes it easier.</p>
-   <p>Got a Bluetooth clicker? Turn on <b>REMOTE</b> and you never touch the phone.</p>
+   <p>Got a Bluetooth clicker? Turn on <b>REMOTE</b> and you never touch the <span class="dvn">phone</span>.</p>
    <p>In scene partner, <b>LISTEN FOR MY CUE</b> is already on. It is what makes the
    timing work: the scene runs on ACTION, stops dead on your line, and does not move
    until it hears you finish. Tap it off if you would rather run the scene on the
@@ -282,14 +282,14 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
    takes about ninety seconds.</p>
 
    <h4>04 &middot; SAVE</h4>
-   <p>When you keep a take it goes to your phone straight away, into your camera roll with
+   <p>When you keep a take it goes to your <span class="dvn">phone</span> straight away, into your camera roll with
    everything else you shoot. <b>Browser storage is a cache and it can be cleared without
-   warning</b> &mdash; a take that only lives in here is not saved. Anything not yet on your phone
+   warning</b> &mdash; a take that only lives in here is not saved. Anything not yet on your <span class="dvn">phone</span>
    is flagged.</p>
 
    <h4>05 &middot; SEND</h4>
    <p>Nothing gets uploaded from here. This is a list of your files, named the way casting
-   expects &mdash; <code>NAME_Role_Tk1.mp4</code> &mdash; sitting on your phone. Open Actors Access,
+   expects &mdash; <code>NAME_Role_Tk1.mp4</code> &mdash; sitting on your <span class="dvn">phone</span>. Open Actors Access,
    pick them, upload, press send.</p>
 
    <h4>What it will not do</h4>
@@ -301,7 +301,7 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
 
    <h4>Where things live</h4>
    <p>Everything is on this device. No account, no server, nothing sent anywhere. Clearing
-   your browser data clears the app &mdash; which is the whole reason takes go to your phone
+   your browser data clears the app &mdash; which is the whole reason takes go to your <span class="dvn">phone</span>
    the moment you keep them.</p>
 
   </div>
@@ -352,7 +352,7 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
 <br><br><b>Casting offices disagree on this.</b> Some coaches teach it; at least one casting director asks for no pan at all. The hold at full body is there for that reason. Check the instructions on your breakdown.</div>
 <label class="cbrow"><input type="checkbox" id="slateMoveOn"><span>Offer this on full-body slate takes</span></label>
 <div class="am" style="margin-top:10px"><b>Focus and sharpness.</b> Cropping cannot change focus &mdash; whatever the lens did during the slate is baked in, and the punch-in magnifies it. <b>Lock focus and exposure before you shoot the slate.</b>
-<br><br>A tighter crop is also fewer pixels. From a 1080p slate the closest frame is a 2.4&times; upscale and reads soft, so the app <b>refuses</b> rather than shipping a mushy tape. Shoot the slate at the largest size your phone offers.</div>
+<br><br>A tighter crop is also fewer pixels. From a 1080p slate the closest frame is a 2.4&times; upscale and reads soft, so the app <b>refuses</b> rather than shipping a mushy tape. Shoot the slate at the largest size your camera offers.</div>
 <div id="slateMoveUI" style="display:none;margin-top:11px">
  <div class="row" style="gap:8px;flex-wrap:wrap">
   <button class="ghost" onclick="previewSlateMove()">PREVIEW ON A TAKE</button>
@@ -385,8 +385,12 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
     <select id="captureFormat" style="flex:1;min-width:180px" onchange="applyFrame(this.value);previewFormat()">
       <option value="CASTING">CASTING &middot; 16:9 landscape</option>
       <option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
-    <button class="ghost" onclick="previewFlip()">FLIP</button>
+    <button class="ghost" id="flipBtn" onclick="previewFlip()">FLIP</button>
     <button id="rollBtn" onclick="rollToggle()">THIS DEVICE IS ROLLING</button>
+  </div>
+  <div id="inputPick"></div>
+  <div id="capNote" style="margin-top:11px"></div>
+  <div class="row" style="gap:8px;flex-wrap:wrap;margin:11px 0 4px">
     <button class="ghost" id="remoteBtn" onclick="remoteEnable()">REMOTE</button>
   </div>
   <div id="remoteState"></div>
@@ -411,10 +415,10 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
   <div id="cutWork"></div>
 </div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="grid2"><div><label>Trim in (sec)</label><input id="trimIn" type="number" step=".1" value="0"></div><div><label>Trim out (sec)</label><input id="trimOut" type="number" step=".1" value="0"></div></div><div class="row"><button onclick="applyTrim()">APPLY TO SURVIVOR</button><button onclick="addSlate()">+ SLATE</button></div></div></div></section>
 <section id="save" class="panel">
-<div class="am">Get the performance onto this phone. Browser storage is a cache &mdash; it can be cleared without warning. A take that only lives in here is not saved.</div>
+<div class="am">Get the performance onto this <span class="dvn">phone</span>. Browser storage is a cache &mdash; it can be cleared without warning. A take that only lives in here is not saved.</div>
 <div class="section"><h3>Bring in footage</h3><div class="inside">
   <div style="font-size:13px;color:var(--mut);line-height:1.55;margin-bottom:11px">
-    Shot it on your phone? AirDrop it here and it joins your takes. The file is stored
+    Shot it on your phone? Send it over and it joins your takes. The file is stored
     exactly as it arrived &mdash; nothing is re-encoded on the way in.</div>
   <input type="file" id="importFile" accept="video/*" multiple style="display:none">
   <button onclick="document.getElementById('importFile').click()">&#8679; ADD A VIDEO FROM THIS DEVICE</button>
@@ -437,7 +441,7 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
 </div></div>
 </section>
 <section id="send" class="panel">
-<div class="am">Nothing gets uploaded from here. These are your files, named the way casting expects, sitting on your phone. Open Actors Access, pick them, upload, press send.</div>
+<div class="am">Nothing gets uploaded from here. These are your files, named the way casting expects, sitting on your <span class="dvn">phone</span>. Open Actors Access, pick them, upload, press send.</div>
 
 <div class="section"><h3>How does this office want it?</h3><div class="inside">
  <div class="modes" id="sendModes"></div>
@@ -493,7 +497,7 @@ if($('startCam'))$('startCam').onclick=async()=>{
    $('recState').textContent='CAMERA LIVE · '+PC.format;
    startMeters(); startCoach();
   } else {
-   stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:camFacing},audio:true});
+   stream=await navigator.mediaDevices.getUserMedia({video:videoConstraint(),audio:audioConstraint()});
    $('preview').srcObject=stream;$('recState').textContent='CAMERA LIVE';startMeters();
   }
  }catch(e){alert('Camera/mic unavailable: '+e.message)}};
@@ -530,9 +534,9 @@ function flipCam(){ camFacing = camFacing==='user'?'environment':'user';
 function startMeters(){try{audioCtx=new AudioContext();let src=audioCtx.createMediaStreamSource(stream);analyser=audioCtx.createAnalyser();analyser.fftSize=1024;src.connect(analyser);let data=new Uint8Array(analyser.fftSize);const cvs=document.createElement('canvas'),ctx=cvs.getContext('2d');cvs.width=64;cvs.height=64;function loop(){analyser.getByteTimeDomainData(data);let ss=0;for(let v of data){let x=(v-128)/128;ss+=x*x}let rms=Math.sqrt(ss/data.length);$('rmsVal').textContent=rms.toFixed(2);let v=$('preview');if(v.videoWidth){ctx.drawImage(v,0,0,64,64);let p=ctx.getImageData(0,0,64,64).data,s=0;for(let i=0;i<p.length;i+=4)s+=(.2126*p[i]+.7152*p[i+1]+.0722*p[i+2])/255;let l=s/(p.length/4);$('lightVal').textContent=l.toFixed(2);$('hudTech').textContent='LIGHT '+l.toFixed(2)+' · AUDIO '+rms.toFixed(2)}raf=requestAnimationFrame(loop)}loop()}catch(e){}}
 if($('recBtn'))$('recBtn').onclick=()=>{if(!stream)return alert('Start camera first.');chunks=[];rec=new MediaRecorder(stream);rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onstop=()=>{let blob=new Blob(chunks,{type:rec.mimeType}),url=URL.createObjectURL(blob);state.takes.push({id:Date.now().toString(36),scene:state.scene,n:state.takes.filter(t=>t.scene===state.scene).length+1,status:'HOLD',bytes:blob.size,type:blob.type,url,trimIn:0,trimOut:0,created:new Date().toISOString()});localStorage.setItem(KEY,JSON.stringify(state));renderTakes();};rec.start();$('recState').textContent='RECORDING';$('recBtn').disabled=true;$('stopBtn').disabled=false};
 if($('stopBtn'))$('stopBtn').onclick=()=>{if(rec&&rec.state!=='inactive')rec.stop();$('recState').textContent='READY';$('recBtn').disabled=false;$('stopBtn').disabled=true};
-function renderTakes(){$('takeCount').textContent=state.takes.length;try{unsavedBanner();renderSave();navState();}catch(e){}$('takeList').innerHTML=state.takes.slice().reverse().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>SCENE ${t.scene} · TAKE ${t.n}</b><small>${t.status} · ${(t.bytes/1048576).toFixed(1)} MB · ${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'}</small></div><div class="row"><button class="mini" onclick="saveTakeToDevice('${t.id}')" style="border-color:#E0A23C;color:#E0A23C">&#8681; SAVE</button><button class="mini" onclick="setTake('${t.id}','DROP')">DROP</button><button class="mini" onclick="setTake('${t.id}','HOLD')">HOLD</button><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">SURVIVOR</button></div></div>`).join('')}
+function renderTakes(){$('takeCount').textContent=state.takes.length;try{unsavedBanner();renderSave();navState();}catch(e){}$('takeList').innerHTML=state.takes.slice().reverse().map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>SCENE ${t.scene} · TAKE ${t.n}</b><small>${t.status} · ${(t.bytes/1048576).toFixed(1)} MB · ${t.savedToDevice?'<span style="color:#5cae7e">saved to ${DEVICE}</span>':'<span style="color:#E0A23C">browser only</span>'}</small></div><div class="row"><button class="mini" onclick="saveTakeToDevice('${t.id}')" style="border-color:#E0A23C;color:#E0A23C">&#8681; SAVE</button><button class="mini" onclick="setTake('${t.id}','DROP')">DROP</button><button class="mini" onclick="setTake('${t.id}','HOLD')">HOLD</button><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">SURVIVOR</button></div></div>`).join('')}
 function setTake(id,s){let t=state.takes.find(x=>x.id===id);if(!t)return;if(s==='SURVIVOR')state.takes.filter(x=>x.scene===t.scene).forEach(x=>{if(x.id!==id&&x.status==='SURVIVOR')x.status='HOLD'});t.status=s;localStorage.setItem(KEY,JSON.stringify(state));renderTakes();renderCut()}window.setTake=setTake;
-function renderCut(){$('cutTakes').innerHTML=state.takes.length?state.takes.map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>Scene ${t.scene} · Take ${t.n}</b><small>${t.savedToDevice?'<span style="color:#5cae7e">saved to phone</span>':'<span style="color:#E0A23C">browser only</span>'} · ${t.status} · trim ${t.trimIn||0} / ${t.trimOut||0}</small></div><div><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">USE</button></div></div>`).join(''):'No takes yet.';let surv=state.takes.filter(t=>t.status==='SURVIVOR');state.sequence=surv.map(t=>t.id);$('timeline').innerHTML=surv.map(t=>`<div class=clip><b>SCENE ${t.scene}</b><small>TAKE ${t.n} · SURVIVOR</small></div>`).join('')||'<span class=pill>No survivor selected.</span>';}
+function renderCut(){$('cutTakes').innerHTML=state.takes.length?state.takes.map(t=>`<div class="take ${t.status==='SURVIVOR'?'survivor':''}"><div><b>Scene ${t.scene} · Take ${t.n}</b><small>${t.savedToDevice?'<span style="color:#5cae7e">saved to ${DEVICE}</span>':'<span style="color:#E0A23C">browser only</span>'} · ${t.status} · trim ${t.trimIn||0} / ${t.trimOut||0}</small></div><div><button class="mini" onclick="setTake('${t.id}','SURVIVOR')">USE</button></div></div>`).join(''):'No takes yet.';let surv=state.takes.filter(t=>t.status==='SURVIVOR');state.sequence=surv.map(t=>t.id);$('timeline').innerHTML=surv.map(t=>`<div class=clip><b>SCENE ${t.scene}</b><small>TAKE ${t.n} · SURVIVOR</small></div>`).join('')||'<span class=pill>No survivor selected.</span>';}
 function applyTrim(){let t=state.takes.find(t=>t.status==='SURVIVOR');if(!t)return alert('Select a survivor first.');t.trimIn=+$('trimIn').value||0;t.trimOut=+$('trimOut').value||0;localStorage.setItem(KEY,JSON.stringify(state));renderCut()}function addSlate(){state.sequence.push('SLATE');$('timeline').insertAdjacentHTML('beforeend','<div class=clip><b>SLATE</b><small>office-specific / actor-selected</small></div>')}
 function slatePreview(){const pts=[];for(let i=0;i<=10;i++){let u=i/10;let y=u<.4?.2+(.75-.2)*(3*(u/.4)**2-2*(u/.4)**3):u<.55?.75:.75+(.25-.75)*(3*((u-.55)/.45)**2-2*((u-.55)/.45)**3);pts.push(y.toFixed(2))}$('slateState').textContent='PAN Y · '+pts.join(' → ')}
 const profiles={ACTORS_ACCESS:['Actors Access','Browser upload handoff'],REPRESENTATION:['Agent / Manager','Native share / transfer'],SOCIAL_VERTICAL:['Social · Vertical','9:16 derivative'],SOCIAL_LANDSCAPE:['Social · Landscape','16:9 derivative'],SAVE_MASTER:['Save Master','Full-quality source']};
@@ -551,6 +555,9 @@ if('serviceWorker' in navigator){
    a plain http:// address will silently fail to open the camera, which looks
    like a broken app rather than a setup problem. Say so plainly. */
 window.addEventListener('DOMContentLoaded',()=>{
+  try{ paintDeviceNoun(); }catch(e){}
+  try{ refreshInputs(); }catch(e){}
+  try{ capabilityNote(); }catch(e){}
   if(!window.isSecureContext){
     const d=document.createElement('div');
     d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#d9694e;color:#fff;padding:12px 14px;font:13px/1.5 ui-monospace,Menlo,monospace';
@@ -1042,7 +1049,7 @@ function renderPairs(){
  } else if(imports.length&&!refs.length&&!linked.length){
   h+='<div class="am" style="margin:0">Imported footage sits on its own until this device has also rolled on a take.</div>';
  } else if(!imports.length&&!linked.length){
-  h+='<div class="am" style="margin:0">When you bring in footage from your phone, matches to what this device shot show up here.</div>';
+  h+='<div class="am" style="margin:0">When you bring in footage from another camera, matches to what this ${DEVICE} shot show up here.</div>';
  }
  el.innerHTML=h;
 }
@@ -1052,13 +1059,13 @@ function renderSave(){
  const el=$('saveList'); if(!el||el===_NULLEL)return;
  const takes=(state.takes||[]).filter(t=>t.status!=='DROP');
  if(!takes.length){
-  el.innerHTML='<div class="am" style="margin:0">Nothing here yet. Record a take, or bring in a video you shot on your phone using the button above.</div>';
+  el.innerHTML='<div class="am" style="margin:0">Nothing here yet. Record a take, or bring in a video you shot elsewhere using the button above.</div>';
   const np=$('namePreview'); if(np)np.innerHTML='';
   return;
  }
  const unsaved=takes.filter(t=>!t.savedToDevice).length;
  let h=`<div class="take" style="margin:0 0 11px"><div>
-   <b>${takes.length-unsaved} of ${takes.length} saved to this phone</b>
+   <b>${takes.length-unsaved} of ${takes.length} saved to this ${DEVICE}</b>
    <small>${unsaved?unsaved+' still only in the browser':'All of them are on the device.'}</small></div>
    <span class="pill" style="${unsaved?'':'color:#5cae7e;border-color:#5cae7e'}">${unsaved?'INCOMPLETE':'SAFE'}</span></div>`;
  h+='<div style="display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden">';
@@ -1072,7 +1079,7 @@ function renderSave(){
         ${t.imported
            ? (t.sessionOnly?'in this session only &mdash; the original is still on this device'
                            :'original is on this device')
-           : (t.savedToDevice?'saved to phone':'browser only')}${t.imported&&t.playable===false?' &middot; <span style="color:#E0A23C">this device cannot play it</span>':''}</div>
+           : (t.savedToDevice?'saved to '+DEVICE:'browser only')}${t.imported&&t.playable===false?' &middot; <span style="color:#E0A23C">this device cannot play it</span>':''}</div>
     </div>
     <button class="mini" onclick="playTake('${t.id}')">&#9654;</button>
     <button class="${t.savedToDevice?'mini ghost':'mini'}" onclick="saveTakeToDevice('${t.id}')"
@@ -1090,7 +1097,7 @@ function playTake(id){
  w.innerHTML=`<div class="rv"><video src="${t.url}" controls autoplay playsinline></video>
    <div class="rvbar"><div><b>${t.isSlate?'Slate':'Take '+t.n}</b><small>${t.secs||0}s</small></div>
    <div class="rvbtns"><button class="sBtn" onclick="closeReview()">CLOSE</button>
-   <button class="sBtn savebtn" onclick="saveTakeToDevice('${t.id}')">&#8681; SAVE TO PHONE</button></div></div></div>`;
+   <button class="sBtn savebtn" onclick="saveTakeToDevice('${t.id}')">&#8681; SAVE TO ${DEVICE.toUpperCase()}</button></div></div></div>`;
  w.addEventListener('click',e=>{if(e.target===w)closeReview();});
  document.body.appendChild(w);
 }
@@ -1143,7 +1150,7 @@ async function previewSlateMove(){
   const url=URL.createObjectURL(moved);
   out.innerHTML=`<video src="${url}" controls playsinline style="width:100%;border-radius:10px;background:#000"></video>
    <div class="row" style="gap:8px;margin-top:9px;flex-wrap:wrap">
-     <button onclick="saveSlateMove()">&#8681; SAVE THIS TO PHONE</button>
+     <button onclick="saveSlateMove()">&#8681; SAVE THIS TO ${DEVICE.toUpperCase()}</button>
      <button class="ghost" onclick="previewSlateMove()">REBUILD</button></div>
    <div class="am" style="margin-top:9px">${(moved.size/1048576).toFixed(1)} MB &middot; built from Take ${t.n}. Your original take is untouched.</div>`;
   window.__slateMoved={blob:moved,take:t};
@@ -1266,7 +1273,7 @@ async function cutRun(presetId){
      ${r.saved>0?'&middot; '+r.saved+'% smaller':''}</small></div>
      <span class="pill">${r.to<500*1048576?'UNDER 500 MB':'STILL LARGE'}</span></div>
    <div class="row" style="gap:8px;margin-top:9px;flex-wrap:wrap">
-     <button onclick="cutSave()">&#8681; SAVE THIS TO PHONE</button>
+     <button onclick="cutSave()">&#8681; SAVE THIS TO ${DEVICE.toUpperCase()}</button>
      <button class="ghost" onclick="renderCutWork()">START OVER</button></div>`;
  }catch(e){
   box.innerHTML='<div class="am" style="border-color:#d9694e;margin:0"><b>Could not encode.</b><br>'+esc2(e.message)+'</div>';
@@ -2205,7 +2212,7 @@ function unsavedBanner(){
  if(!el||!el.classList)return;
  if(!n){ el.classList.remove('on'); return; }
  el.classList.add('on');
- el.innerHTML=`<span><b>${n} take${n===1?'':'s'} not saved to this phone yet.</b>
+ el.innerHTML=`<span><b>${n} take${n===1?'':'s'} not saved to this ${DEVICE} yet.</b>
    Browser storage can be cleared without warning.</span>
    <button class="mini" onclick="saveAllTakes()">SAVE ${n===1?'IT':'THEM'}</button>`;
 }
@@ -2240,14 +2247,17 @@ async function openStage(){
  try{
   const PCa=window.ActorOSPerformerCamera;
   if(PCa){ PCa.format=$('captureFormat').value; PCa.facing=(window.camFacing||'user');
+   PCa.deviceId=(CAM_ID&&INPUTS.cams.some(c=>c.deviceId===CAM_ID))?CAM_ID:null;
+   PCa.micId=(MIC_ID&&INPUTS.mics.some(m=>m.deviceId===MIC_ID))?MIC_ID:null;
    let c=document.getElementById('pcSample');
    if(!c){c=document.createElement('canvas');c.id='pcSample';c.width=160;c.height=90;c.style.display='none';document.body.appendChild(c);}
    await PCa.open($('stageVid'), c); window.PC=PCa;
   } else {
-   $('stageVid').srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:true});
+   $('stageVid').srcObject=await navigator.mediaDevices.getUserMedia({video:videoConstraint(),audio:audioConstraint()});
   }
  }catch(e){ alert('Camera unavailable: '+e.message); return exitStage(); }
  drawStage(); liveFlag(true);
+ try{ refreshInputs(); }catch(e){}
  try{ const r=$('stageRemote'); if(r&&r.style)r.style.display=REMOTE_ON?'':'none'; }catch(e){}
  /* PARTNER is a timing instrument. Without listening you have to reach up and tap
     the screen every time you finish a line, which is the thing the mode exists to
@@ -2355,6 +2365,112 @@ function rollToggle(){
 try{ if(localStorage.getItem('aos_roll')==='0') ROLL=false; }catch(e){}
 window.rollToggle=rollToggle;
 
+/* ===== WHAT AM I RUNNING ON =====
+   The app used to call everything a phone. On a laptop that is not a cosmetic
+   problem - it reads as software written for somebody else, and you start wondering
+   what else it assumes. One word, worked out once, used everywhere.
+
+   Note the iPad: modern iPadOS reports itself as a Macintosh, and the only thing
+   that gives it away is that a Mac does not have ten touch points. */
+const DEVICE=(function(){
+ try{
+  const ua=navigator.userAgent||'';
+  const touch=(navigator.maxTouchPoints||0)>1;
+  if(/iPad/.test(ua)||(/Macintosh/.test(ua)&&touch)) return 'tablet';
+  if(/iPhone|iPod/.test(ua)) return 'phone';
+  if(/Android/.test(ua)) return /Mobile/.test(ua)?'phone':'tablet';
+  if(/Mobile|webOS|BlackBerry|IEMobile|Opera Mini/.test(ua)) return 'phone';
+  /* A desktop operating system is a computer even when the screen is touch. Plenty
+     of laptops take fingers; that does not make them tablets, and calling one a
+     tablet is the same failure as calling everything a phone. */
+  if(/Windows NT|X11|CrOS|Linux x86_64/.test(ua)) return 'computer';
+  if(touch&&Math.min(screen.width,screen.height)>=600) return 'tablet';
+ }catch(e){}
+ return 'computer';
+})();
+function deviceNoun(){ return DEVICE; }
+function thisDevice(){ return 'this '+DEVICE; }
+function paintDeviceNoun(){
+ try{ document.querySelectorAll('.dvn').forEach(e=>{ e.textContent=DEVICE; }); }catch(e){}
+}
+window.DEVICE=DEVICE; window.deviceNoun=deviceNoun;
+
+/* ===== WHICH CAMERA, WHICH MIC =====
+   facingMode is a phone idea. On a laptop it means nothing - there is one camera in
+   the lid and, very often, a much better one on a stand next to it, and until now
+   there was no way to ask for the good one. So: pick by device where devices exist,
+   flip where flipping is a thing, and never show a control the hardware cannot obey. */
+let INPUTS={cams:[],mics:[]};
+async function refreshInputs(){
+ if(!(navigator.mediaDevices&&navigator.mediaDevices.enumerateDevices)) return INPUTS;
+ try{
+  const all=await navigator.mediaDevices.enumerateDevices();
+  INPUTS.cams=all.filter(d=>d.kind==='videoinput');
+  INPUTS.mics=all.filter(d=>d.kind==='audioinput');
+ }catch(e){ return INPUTS; }
+ paintInputs();
+ return INPUTS;
+}
+function paintInputs(){
+ const box=document.getElementById('inputPick');
+ const flip=document.getElementById('flipBtn');
+ /* Labels stay blank until the camera has been opened once - the browser will not
+    name hardware it has not been given permission to use. Say that rather than
+    listing "Camera 1, Camera 2". */
+ const named=INPUTS.cams.some(c=>c.label);
+ if(flip) flip.style.display=(INPUTS.cams.length>1&&DEVICE!=='computer')?'':'none';
+ if(!box)return;
+ if(INPUTS.cams.length<2&&INPUTS.mics.length<2){ box.innerHTML=''; return; }
+ let h='';
+ if(INPUTS.cams.length>1){
+  h+='<label style="margin-top:9px">Camera</label><select id="camPick" onchange="pickCam(this.value)">';
+  INPUTS.cams.forEach((c,i)=>{ h+=`<option value="${c.deviceId}"${c.deviceId===CAM_ID?' selected':''}>${esc2(c.label||('Camera '+(i+1)))}</option>`; });
+  h+='</select>';
+ }
+ if(INPUTS.mics.length>1){
+  h+='<label style="margin-top:9px">Microphone</label><select id="micPick" onchange="pickMic(this.value)">';
+  INPUTS.mics.forEach((m,i)=>{ h+=`<option value="${m.deviceId}"${m.deviceId===MIC_ID?' selected':''}>${esc2(m.label||('Microphone '+(i+1)))}</option>`; });
+  h+='</select>';
+ }
+ if(!named) h+='<div style="font-size:12px;color:var(--faint);margin-top:6px">Open the camera once and these will show their real names.</div>';
+ box.innerHTML=h;
+}
+let CAM_ID=null, MIC_ID=null;
+try{ CAM_ID=localStorage.getItem('aos_cam')||null; MIC_ID=localStorage.getItem('aos_mic')||null; }catch(e){}
+function pickCam(id){ CAM_ID=id||null; try{localStorage.setItem('aos_cam',CAM_ID||'')}catch(e){}
+ if(window.PC&&PC.stream){ try{PC.stop()}catch(e){} } try{ startPreview(); }catch(e){} }
+function pickMic(id){ MIC_ID=id||null; try{localStorage.setItem('aos_mic',MIC_ID||'')}catch(e){} }
+window.pickCam=pickCam; window.pickMic=pickMic; window.refreshInputs=refreshInputs;
+
+/* Build the video constraint the honest way: a chosen device wins, otherwise fall
+   back to which way the camera faces, which is all a phone can offer. */
+function videoConstraint(){
+ const v={width:{ideal:1920},height:{ideal:1080}};
+ if(CAM_ID&&INPUTS.cams.some(c=>c.deviceId===CAM_ID)) v.deviceId={exact:CAM_ID};
+ else v.facingMode={ideal:(window.camFacing||'user')};
+ return v;
+}
+function audioConstraint(){
+ if(MIC_ID&&INPUTS.mics.some(m=>m.deviceId===MIC_ID)) return {deviceId:{exact:MIC_ID}};
+ return true;
+}
+window.videoConstraint=videoConstraint; window.audioConstraint=audioConstraint;
+
+/* What this browser can and cannot do, said before you find out the hard way. */
+function capabilityNote(){
+ const el=document.getElementById('capNote'); if(!el)return;
+ const bits=[];
+ bits.push('<b>No cinematic mode.</b> Apple does not give it to any browser, on any '+
+   'device. If you want that depth, shoot on your phone and bring the file in &mdash; '+
+   'everything else here still works on it.');
+ const canListen=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+ if(!canListen) bits.push('<b>This browser cannot listen for your cue.</b> Scene partner '+
+   'still runs &mdash; you push it on by tapping the frame, or with a clicker. Chrome or '+
+   'Safari will listen.');
+ el.innerHTML='<div class="am" style="margin:0">'+bits.join('<br><br>')+'</div>';
+}
+window.capabilityNote=capabilityNote;
+
 function stageTap(){
  if(sRecOn && (MODE==='PARTNER'||MODE==='PROMPTER')) return stageStep(1);
  stageRec();
@@ -2448,11 +2564,11 @@ function showTakeReview(t, blob){
  w.innerHTML=`<div class="rv">
    <video src="${t.url}" controls playsinline autoplay></video>
    <div class="rvbar">
-     <div><b>Take ${t.n}</b><small>${t.secs}s &middot; ${(t.bytes/1048576).toFixed(1)} MB &middot; <span style="color:#E0A23C">not saved to this phone yet</span></small></div>
+     <div><b>Take ${t.n}</b><small>${t.secs}s &middot; ${(t.bytes/1048576).toFixed(1)} MB &middot; <span style="color:#E0A23C">not saved to this ${DEVICE} yet</span></small></div>
      <div class="rvbtns">
        <button class="sBtn" onclick="reviewDrop('${t.id}')" style="border-color:#d9694e;color:#d9694e;margin-right:14px">ERASE</button>
        <button class="sBtn" onclick="reviewAgain()">GO AGAIN</button>
-       <button class="sBtn savebtn" onclick="saveTakeToDevice('${t.id}')">&#8681; SAVE TO PHONE</button>
+       <button class="sBtn savebtn" onclick="saveTakeToDevice('${t.id}')">&#8681; SAVE TO ${DEVICE.toUpperCase()}</button>
        <button class="sBtn keep" onclick="reviewKeep('${t.id}')">KEEP</button>
      </div>
    </div></div>`;
