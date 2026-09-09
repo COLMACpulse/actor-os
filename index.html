@@ -386,6 +386,7 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
       <option value="CASTING">CASTING &middot; 16:9 landscape</option>
       <option value="SOCIAL">SOCIAL &middot; 9:16 vertical</option></select>
     <button class="ghost" onclick="previewFlip()">FLIP</button>
+    <button id="rollBtn" onclick="rollToggle()">THIS DEVICE IS ROLLING</button>
     <button class="ghost" id="remoteBtn" onclick="remoteEnable()">REMOTE</button>
   </div>
   <div id="remoteState"></div>
@@ -418,6 +419,12 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
   <input type="file" id="importFile" accept="video/*" multiple style="display:none">
   <button onclick="document.getElementById('importFile').click()">&#8679; ADD A VIDEO FROM THIS DEVICE</button>
   <div id="importNote" style="margin-top:11px"></div>
+</div></div>
+<div class="section"><h3>Two angles, one take</h3><div class="inside">
+  <div style="font-size:13px;color:var(--mut);line-height:1.55;margin-bottom:11px">
+    The phone file looks right. The file this device shot knows which take it is.
+    Link them and the good one inherits the name.</div>
+  <div id="pairBox"></div>
 </div></div>
 <div class="section"><h3>Takes</h3><div class="inside">
   <div id="saveList"></div>
@@ -883,7 +890,7 @@ async function importTakes(files){
   catch(e){ t.sessionOnly=true; sessionOnly++; }   // usually the quota, on a big tape
  }
  try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
- try{ renderTakes(); renderSave(); renderCutWork(); navState(); }catch(e){}
+ try{ renderTakes(); renderSave(); renderCutWork(); renderPairs(); navState(); }catch(e){}
  if(note&&note.innerHTML!==undefined){
   let msg='<b>'+added+' file'+(added===1?'':'s')+' added.</b> Stored exactly as they arrived.';
   if(unplayable) msg+='<br><span style="color:#E0A23C">'+unplayable+' of them will not play on this device. '+
@@ -894,6 +901,152 @@ async function importTakes(files){
  }
 }
 window.importTakes=importTakes;
+
+/* ===== TWO ANGLES, ONE TAKE =====
+   The phone shoots the hero. This device shoots the reference and, unlike the phone,
+   it knows what it shot - which take, which scene, which role, when ACTION was. Put
+   the two together and the good-looking file inherits everything the phone never knew.
+
+   Nothing links itself. A wrong pairing sends the wrong performance to casting, so
+   the engine proposes with its evidence on the table and you confirm. Surface, don't
+   decide. */
+const PAIR_TOL_MS=12000;   // how far two endings can sit apart and still be one take
+const PAIR_DUR_TOL=8;      // seconds of length difference before it looks wrong
+
+function pairEndTime(t){
+ if(t&&t.endedAt) return t.endedAt;
+ if(t&&t.created){ const d=Date.parse(t.created); if(!isNaN(d)) return d; }
+ return null;
+}
+
+/* Two devices almost never agree on the time, but they disagree by the same amount
+   all session. So the offset is worked out once, from the whole batch: try every
+   possible pairing as an anchor and keep the one that lines up the most takes. The
+   gaps between takes are identical on both devices whatever the clocks say, which is
+   why this survives a phone that is four minutes fast. */
+function estimateOffset(imports,refs){
+ const offs=[];
+ imports.forEach(i=>{ const a=pairEndTime(i); if(a==null)return;
+  refs.forEach(r=>{ const b=pairEndTime(r); if(b==null)return; offs.push(a-b); }); });
+ if(!offs.length) return {offset:0,votes:0,err:0};
+ let best={offset:0,votes:-1,err:Infinity};
+ offs.forEach(off=>{
+  let votes=0,err=0;
+  imports.forEach(i=>{ const a=pairEndTime(i); if(a==null)return;
+   let d0=Infinity;
+   refs.forEach(r=>{ const b=pairEndTime(r); if(b==null)return;
+    const d=Math.abs((a-off)-b); if(d<d0)d0=d; });
+   if(d0<=PAIR_TOL_MS){ votes++; err+=d0; } });
+  if(votes>best.votes||(votes===best.votes&&err<best.err)) best={offset:off,votes,err};
+ });
+ return best;
+}
+
+function proposePairs(imports,refs){
+ const est=estimateOffset(imports,refs), cands=[];
+ imports.forEach(i=>{ const a=pairEndTime(i); if(a==null)return;
+  refs.forEach(r=>{ const b=pairEndTime(r); if(b==null)return;
+   const dt=Math.abs((a-est.offset)-b); if(dt>PAIR_TOL_MS)return;
+   const dd=Math.abs((i.secs||0)-(r.secs||0));
+   cands.push({imp:i,ref:r,dt,dd,
+    score:(dt/PAIR_TOL_MS)*0.65+Math.min(1,dd/PAIR_DUR_TOL)*0.35});
+  }); });
+ /* Best first, and no take gets claimed twice - two files cannot be the same angle
+    of the same moment. */
+ cands.sort((x,y)=>x.score-y.score);
+ const ui=new Set(), ur=new Set(), pairs=[];
+ cands.forEach(c=>{ if(ui.has(c.imp.id)||ur.has(c.ref.id))return;
+  ui.add(c.imp.id); ur.add(c.ref.id); pairs.push(c); });
+ return {pairs, unmatched:imports.filter(i=>!ui.has(i.id)),
+         offset:est.offset, votes:est.votes};
+}
+
+function linkTakes(impId,refId){
+ const a=(state.takes||[]).find(x=>x.id===impId);
+ const b=(state.takes||[]).find(x=>x.id===refId);
+ if(!a||!b)return false;
+ const pid='p'+Date.now().toString(36);
+ a.pairId=pid; a.angle='HERO';        // the phone file - the one that looks right
+ b.pairId=pid; b.angle='REFERENCE';   // this device - the one that knows what it is
+ /* The hero arrives anonymous. It takes the take number and the scene from the
+    reference, because that is the half of the pair that was paying attention. */
+ b.n=b.n||1; a.n=b.n; a.scene=b.scene;
+ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+ try{ renderSave(); renderCutWork(); renderTakes(); renderPairs(); }catch(e){}
+ return true;
+}
+function unlinkTake(id){
+ const t=(state.takes||[]).find(x=>x.id===id); if(!t||!t.pairId)return;
+ const pid=t.pairId;
+ (state.takes||[]).forEach(x=>{ if(x.pairId===pid){ delete x.pairId; delete x.angle; } });
+ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+ try{ renderSave(); renderCutWork(); renderTakes(); renderPairs(); }catch(e){}
+}
+function pairOf(t){
+ if(!t||!t.pairId)return null;
+ return (state.takes||[]).find(x=>x.pairId===t.pairId&&x.id!==t.id)||null;
+}
+window.linkTakes=linkTakes; window.unlinkTake=unlinkTake;
+
+function renderPairs(){
+ const el=$('pairBox'); if(!el||el===_NULLEL)return;
+ const takes=(state.takes||[]).filter(t=>t.status!=='DROP');
+ const imports=takes.filter(t=>t.imported&&!t.pairId);
+ const refs=takes.filter(t=>!t.imported&&!t.pairId);
+ const linked=takes.filter(t=>t.pairId&&t.angle==='HERO');
+ let h='';
+ if(linked.length){
+  h+='<div style="display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:11px">';
+  linked.forEach(a=>{ const b=pairOf(a); if(!b)return;
+   h+=`<div style="background:var(--p1);padding:11px 13px;display:flex;gap:10px;align-items:center">
+     <div style="flex:1;min-width:0">
+       <b style="font-size:13px">Take ${a.n} &middot; two angles</b>
+       <div style="font-size:11px;color:var(--faint);margin-top:3px">
+         ${esc2(a.originalName||'phone file')} &middot; ${a.width?a.width+'&times;'+a.height:'?'}
+         <span style="color:#5cae7e">HERO</span></div>
+       <div style="font-size:11px;color:var(--faint);margin-top:2px">
+         ${esc2(b.scene||'')} Take ${b.n} &middot; ${b.secs||0}s <span style="color:var(--mut)">REFERENCE</span></div>
+     </div>
+     <button class="mini ghost" onclick="unlinkTake('${a.id}')">UNLINK</button>
+   </div>`; });
+  h+='</div>';
+ }
+ if(imports.length&&refs.length){
+  const p=proposePairs(imports,refs);
+  if(p.pairs.length){
+   const drift=Math.round(p.offset/1000);
+   h+=`<div class="am" style="margin:0 0 9px"><b>${p.pairs.length} likely match${p.pairs.length===1?'':'es'}.</b>
+     Nothing is linked until you say so.
+     ${Math.abs(drift)>2?'<br>The two clocks are about '+Math.abs(drift)+'s apart; that has been accounted for.':''}</div>`;
+   h+='<div style="display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden">';
+   p.pairs.forEach(c=>{
+    h+=`<div style="background:var(--p1);padding:11px 13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:150px">
+        <b style="font-size:13px">${esc2(c.imp.originalName||'phone file')}</b>
+        <div style="font-size:11px;color:var(--faint);margin-top:3px">
+          looks like <b style="color:var(--ink)">${esc2(c.ref.scene||'')} Take ${c.ref.n}</b></div>
+        <div style="font-size:11px;color:var(--faint);margin-top:2px;font-family:var(--mono)">
+          ended ${(c.dt/1000).toFixed(1)}s apart &middot; ${c.dd}s difference in length</div>
+      </div>
+      <button class="mini" onclick="linkTakes('${c.imp.id}','${c.ref.id}');renderPairs()">LINK</button>
+    </div>`;
+   });
+   h+='</div>';
+   if(p.pairs.length>1)
+    h+=`<div class="row" style="margin-top:9px"><button onclick="${p.pairs.map(c=>`linkTakes('${c.imp.id}','${c.ref.id}')`).join(';')};renderPairs()">LINK ALL ${p.pairs.length}</button></div>`;
+  }
+  if(p.unmatched.length)
+   h+=`<div class="am" style="margin:9px 0 0;border-color:#E0A23C">
+     <b>${p.unmatched.length} file${p.unmatched.length===1?'':'s'} could not be matched to anything this device shot.</b>
+     They still work on their own &mdash; they just carry no take number.</div>`;
+ } else if(imports.length&&!refs.length&&!linked.length){
+  h+='<div class="am" style="margin:0">Imported footage sits on its own until this device has also rolled on a take.</div>';
+ } else if(!imports.length&&!linked.length){
+  h+='<div class="am" style="margin:0">When you bring in footage from your phone, matches to what this device shot show up here.</div>';
+ }
+ el.innerHTML=h;
+}
+window.renderPairs=renderPairs;
 
 function renderSave(){
  const el=$('saveList'); if(!el||el===_NULLEL)return;
@@ -2187,6 +2340,21 @@ function speakPartner(){
 
    Stopping is the button. Stopping is a decision, never a reflex. A clicker makes
    this easier and nothing here needs one. */
+/* This device rolls on every take unless you turn it off. Two recordings on separate
+   hardware is the only real protection against losing a take, and the reference angle
+   is the half that knows what it is. Off is for when the phone is the only camera and
+   this is purely the reader. */
+let ROLL=true;
+function rollToggle(){
+ ROLL=!ROLL;
+ const b=document.getElementById('rollBtn');
+ if(b){ b.textContent=ROLL?'THIS DEVICE IS ROLLING':'READER ONLY - NOT RECORDING';
+        b.className=ROLL?'':'ghost'; }
+ try{ localStorage.setItem('aos_roll',ROLL?'1':'0'); }catch(e){}
+}
+try{ if(localStorage.getItem('aos_roll')==='0') ROLL=false; }catch(e){}
+window.rollToggle=rollToggle;
+
 function stageTap(){
  if(sRecOn && (MODE==='PARTNER'||MODE==='PROMPTER')) return stageStep(1);
  stageRec();
@@ -2227,8 +2395,12 @@ function cancelCountdown(){
 }
 function beginRecording(st,btn){
  sChunks=[];
- try{ sRecorder=new MediaRecorder(st,{mimeType:(window.pickRecorderMime?pickRecorderMime():undefined)}); }
- catch(e){ try{ sRecorder=new MediaRecorder(st); }catch(e2){ return alert('Cannot record: '+e2.message); } }
+ if(!ROLL){ sRecorder=null; }
+ else {
+  try{ sRecorder=new MediaRecorder(st,{mimeType:(window.pickRecorderMime?pickRecorderMime():undefined)}); }
+  catch(e){ try{ sRecorder=new MediaRecorder(st); }catch(e2){ return alert('Cannot record: '+e2.message); } }
+ }
+ if(sRecorder){
  sRecorder.ondataavailable=e=>{ if(e.data.size) sChunks.push(e.data); };
  sRecorder.onstop=()=>{
   const blob=new Blob(sChunks,{type:sRecorder.mimeType||'video/mp4'});
@@ -2238,6 +2410,9 @@ function beginRecording(st,btn){
             n:state.takes.filter(x=>x.scene===((typeof curScene==='function')?curScene().name:state.scene)).length+1,
             status:'HOLD', bytes:blob.size, type:blob.type, url:url,
             trimIn:0, trimOut:0, created:new Date().toISOString(),
+            /* Wall clock at both ends. This is what lets a file shot on the phone be
+               matched to the take this device rolled at the same moment. */
+            startedAt:sT0, endedAt:Date.now(), angle:'REFERENCE',
             secs:Math.round((Date.now()-sT0)/1000), mode:MODE };
   state.takes.push(t);
   try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
@@ -2246,7 +2421,9 @@ function beginRecording(st,btn){
   window.currentBlob=blob;
   showTakeReview(t, blob);
  };
- sRecorder.start(); sRecOn=true; btn.classList.add('rec'); sT0=Date.now();
+  sRecorder.start();
+ }
+ sRecOn=true; btn.classList.add('rec'); sT0=Date.now();
  sTimer=setInterval(()=>{ const t=Math.floor((Date.now()-sT0)/1000);
   $('sTC').textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); },250);
  /* ACTION is the cue for the scene, not just for the camera. If the line we are
