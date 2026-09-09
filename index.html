@@ -411,6 +411,14 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
 </div></div><div class="section"><h3>Submission Sequence</h3><div class="inside"><div class="timeline" id="timeline"></div><div class="grid2"><div><label>Trim in (sec)</label><input id="trimIn" type="number" step=".1" value="0"></div><div><label>Trim out (sec)</label><input id="trimOut" type="number" step=".1" value="0"></div></div><div class="row"><button onclick="applyTrim()">APPLY TO SURVIVOR</button><button onclick="addSlate()">+ SLATE</button></div></div></div></section>
 <section id="save" class="panel">
 <div class="am">Get the performance onto this phone. Browser storage is a cache &mdash; it can be cleared without warning. A take that only lives in here is not saved.</div>
+<div class="section"><h3>Bring in footage</h3><div class="inside">
+  <div style="font-size:13px;color:var(--mut);line-height:1.55;margin-bottom:11px">
+    Shot it on your phone? AirDrop it here and it joins your takes. The file is stored
+    exactly as it arrived &mdash; nothing is re-encoded on the way in.</div>
+  <input type="file" id="importFile" accept="video/*" multiple style="display:none">
+  <button onclick="document.getElementById('importFile').click()">&#8679; ADD A VIDEO FROM THIS DEVICE</button>
+  <div id="importNote" style="margin-top:11px"></div>
+</div></div>
 <div class="section"><h3>Takes</h3><div class="inside">
   <div id="saveList"></div>
   <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px">
@@ -555,6 +563,20 @@ window.addEventListener('DOMContentLoaded',()=>{
 let SIDES={beats:[],speakers:[],me:'',script:[],omit:[],ready:false,pick:{},scenes:[],cur:0};
 function togglePaste(){const w=$('pasteWrap');w.style.display=w.style.display==='none'?'block':'none';}
 function toggleAdv(){const b=$('advBody');b.style.display=b.style.display==='none'?'block':'none';}
+/* Footage coming in from the device. Reset the input afterwards so picking the same
+   file twice in a row still fires. */
+(function(){
+ const fi=document.getElementById('importFile');
+ if(fi&&fi.addEventListener) fi.addEventListener('change',async e=>{
+  const files=e.target.files;
+  try{ await importTakes(files); }catch(err){
+   const n=document.getElementById('importNote');
+   if(n) n.innerHTML='<div class="am" style="margin:0;border-color:#d9694e"><b>Could not bring that in.</b><br>'+esc2(err.message)+'</div>';
+  }
+  try{ e.target.value=''; }catch(err){}
+ });
+})();
+
 $('sidesFile').addEventListener('change',async e=>{
  const f=e.target.files[0]; if(!f) return; e.target.value='';
  const isPDF = /\.pdf$/i.test(f.name) || f.type==='application/pdf';
@@ -807,11 +829,77 @@ function loadRange(){
 /* ===== SAVE =====
    Its own step, because it is its own decision. CUT is which take. SAVE is
    getting that take out of a browser and onto the phone, where it survives. */
+/* ===== BRINGING FOOTAGE IN =====
+   The camera on the best device in the room is the one already in your hand, and a
+   browser cannot reach what it does. So the tape gets shot there and comes here.
+
+   The file is stored byte for byte as it arrived. Nothing re-encodes on import - a
+   master is never replaced by a derivative, and a cinematic tape in particular
+   carries depth data that only Apple's own frameworks can read. Re-wrapping it here
+   would quietly throw that away. */
+function probeVideo(blob){
+ return new Promise(res=>{
+  const v=document.createElement('video');
+  v.preload='metadata'; v.muted=true; v.playsInline=true;
+  const url=URL.createObjectURL(blob);
+  let done=false;
+  const finish=d=>{ if(done)return; done=true; try{URL.revokeObjectURL(url)}catch(e){} res(d); };
+  v.onloadedmetadata=()=>finish({secs:isFinite(v.duration)?Math.round(v.duration):0,
+                                 w:v.videoWidth||0,h:v.videoHeight||0});
+  /* If the browser cannot decode it, say so at the door. Importing a file this
+     device cannot open, then failing in CUT ten minutes later, is worse. */
+  v.onerror=()=>finish({secs:0,w:0,h:0,unreadable:true});
+  setTimeout(()=>finish({secs:0,w:0,h:0,unreadable:true}),8000);
+  v.src=url;
+ });
+}
+async function importTakes(files){
+ const list=Array.from(files||[]).filter(f=>f&&f.size);
+ const note=$('importNote');
+ if(!list.length)return;
+ let added=0, unplayable=0, sessionOnly=0;
+ for(const f of list){
+  if(note&&note.innerHTML!==undefined)
+   note.innerHTML='<div class="am" style="margin:0">Reading '+esc2(f.name)+'&hellip;</div>';
+  const info=await probeVideo(f);
+  const sceneName=(typeof curScene==='function'?curScene().name:state.scene);
+  const t={
+   id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+   scene:sceneName,
+   n:(state.takes||[]).filter(x=>x.scene===sceneName).length+1,
+   status:'HOLD', bytes:f.size, type:f.type||'video/mp4',
+   url:URL.createObjectURL(f), trimIn:0, trimOut:0,
+   created:new Date(f.lastModified||Date.now()).toISOString(),
+   secs:info.secs, width:info.w, height:info.h,
+   mode:'IMPORT', imported:true, originalName:f.name,
+   /* The original is already sitting on this device - that is where it came from.
+      It does not need saving and should not be nagged about. */
+   savedToDevice:true,
+   playable:!info.unreadable
+  };
+  state.takes.push(t); added++;
+  if(info.unreadable) unplayable++;
+  try{ await ActorReader.putTake(t.id,f); }
+  catch(e){ t.sessionOnly=true; sessionOnly++; }   // usually the quota, on a big tape
+ }
+ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+ try{ renderTakes(); renderSave(); renderCutWork(); navState(); }catch(e){}
+ if(note&&note.innerHTML!==undefined){
+  let msg='<b>'+added+' file'+(added===1?'':'s')+' added.</b> Stored exactly as they arrived.';
+  if(unplayable) msg+='<br><span style="color:#E0A23C">'+unplayable+' of them will not play on this device. '+
+    'The file is intact and can still be sent, but it cannot be trimmed here.</span>';
+  if(sessionOnly) msg+='<br><span style="color:#E0A23C">'+sessionOnly+' would not fit in storage. '+
+    'They work until you reload, then bring them in again. The original on this device is untouched.</span>';
+  note.innerHTML='<div class="am" style="margin:0'+((unplayable||sessionOnly)?';border-color:#E0A23C':'')+'">'+msg+'</div>';
+ }
+}
+window.importTakes=importTakes;
+
 function renderSave(){
  const el=$('saveList'); if(!el||el===_NULLEL)return;
  const takes=(state.takes||[]).filter(t=>t.status!=='DROP');
  if(!takes.length){
-  el.innerHTML='<div class="am" style="margin:0">Nothing shot yet. Takes show up here after you record.</div>';
+  el.innerHTML='<div class="am" style="margin:0">Nothing here yet. Record a take, or bring in a video you shot on your phone using the button above.</div>';
   const np=$('namePreview'); if(np)np.innerHTML='';
   return;
  }
@@ -824,11 +912,14 @@ function renderSave(){
  takes.forEach(t=>{
   h+=`<div style="background:var(--p1);padding:11px 13px;display:flex;gap:11px;align-items:center">
     <div style="flex:1;min-width:0">
-      <b style="font-size:13px">${t.isSlate?'Slate':'Take '+t.n}</b>
+      <b style="font-size:13px">${t.isSlate?'Slate':(t.imported?'Imported':'Take '+t.n)}</b>
       <div style="font-size:11px;color:var(--faint);margin-top:3px">
-        ${t.secs||0}s &middot; ${(t.bytes/1048576).toFixed(1)} MB &middot; ${t.status}</div>
-      <div style="font-size:11px;margin-top:3px;color:${t.savedToDevice?'#5cae7e':'#E0A23C'}">
-        ${t.savedToDevice?'saved to phone':'browser only'}</div>
+        ${t.imported&&t.originalName?esc2(t.originalName)+' &middot; ':''}${t.secs||0}s &middot; ${(t.bytes/1048576).toFixed(1)} MB &middot; ${t.status}</div>
+      <div style="font-size:11px;margin-top:3px;color:${(t.savedToDevice&&!t.sessionOnly)?'#5cae7e':'#E0A23C'}">
+        ${t.imported
+           ? (t.sessionOnly?'in this session only &mdash; the original is still on this device'
+                           :'original is on this device')
+           : (t.savedToDevice?'saved to phone':'browser only')}${t.imported&&t.playable===false?' &middot; <span style="color:#E0A23C">this device cannot play it</span>':''}</div>
     </div>
     <button class="mini" onclick="playTake('${t.id}')">&#9654;</button>
     <button class="${t.savedToDevice?'mini ghost':'mini'}" onclick="saveTakeToDevice('${t.id}')"
@@ -969,7 +1060,7 @@ let CUTSEL=null, CUTIN=0, CUTOUT=0;
 function renderCutWork(){
  const el=$('cutWork'); if(!el||el===_NULLEL)return;
  const takes=(state.takes||[]).filter(t=>t.status!=='DROP');
- if(!takes.length){ el.innerHTML='<div class="am" style="margin:0">Nothing shot yet.</div>'; return; }
+ if(!takes.length){ el.innerHTML='<div class="am" style="margin:0">Nothing to cut yet. Record a take, or bring one in from SAVE &rarr; Bring in footage.</div>'; return; }
  const t=takes.find(x=>x.id===CUTSEL)||takes.find(x=>x.status==='SURVIVOR')||takes[takes.length-1];
  CUTSEL=t.id;
  let h=`<div class="row" style="gap:7px;flex-wrap:wrap;margin-bottom:11px">`;

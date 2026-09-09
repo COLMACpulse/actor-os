@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ACTOR OS — Web Capability Probe</title>
+<style>
+:root{
+  --bg:#0d0f12;--p1:#14171c;--p2:#1b1f26;--line:#2b3038;--line2:#3a414c;
+  --ink:#ece7dc;--mut:#9aa0a8;--faint:#646b75;
+  --gold:#e0a23c;--go:#5cae7e;--hold:#d6794e;--bad:#d9694e;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans)}
+main{max-width:760px;margin:0 auto;padding:16px 14px calc(48px + env(safe-area-inset-bottom))}
+h1{font-size:21px;margin:0 0 2px;letter-spacing:-.01em}
+.sub{color:var(--faint);font:11px/1.5 var(--mono);letter-spacing:.1em;margin:0 0 16px}
+.warn{border:1px solid var(--bad);background:rgba(217,105,78,.09);border-radius:11px;padding:12px 13px;margin:0 0 14px;font-size:13.5px;color:#e8dcd8}
+.warn b{color:var(--bad)}
+.t{border:1px solid var(--line);background:var(--p1);border-radius:12px;margin:0 0 10px;overflow:hidden}
+.t.key{border-color:var(--gold)}
+.th{display:flex;gap:10px;align-items:center;padding:12px 13px;flex-wrap:wrap}
+.th b{font-size:14.5px;font-weight:600;flex:1;min-width:140px}
+.tn{padding:0 13px 12px;font-size:13px;color:var(--mut);margin-top:-4px}
+button{font:inherit;min-height:44px;padding:10px 14px;border:1px solid var(--line2);
+  border-radius:9px;background:var(--p2);color:var(--ink);cursor:pointer;font-weight:600}
+button:disabled{opacity:.42;cursor:default}
+button.go{background:var(--gold);border-color:var(--gold);color:#171005}
+.v{font:11px/1 var(--mono);letter-spacing:.1em;padding:6px 9px;border-radius:20px;border:1px solid var(--line2);color:var(--faint)}
+.v.YES{color:var(--go);border-color:var(--go)}
+.v.NO{color:var(--bad);border-color:var(--bad)}
+.v.PART{color:var(--gold);border-color:var(--gold)}
+.v.RUN{color:var(--hold);border-color:var(--hold)}
+pre{white-space:pre-wrap;word-break:break-word;margin:0;padding:11px 13px;
+  background:#0a0b0d;border-top:1px solid var(--line);color:var(--mut);
+  font:11.5px/1.5 var(--mono);max-height:270px;overflow:auto}
+.f{display:flex;gap:9px;flex-wrap:wrap;margin:16px 0 0}
+video{width:100%;max-height:190px;background:#000;border-radius:9px;display:block}
+.hide{display:none}
+.sum{border:1px solid var(--line2);background:var(--p2);border-radius:12px;padding:13px;margin:14px 0 0;font-size:13.5px}
+.sum h2{font-size:13px;margin:0 0 8px;font-weight:600}
+.sum div{color:var(--mut);margin:0 0 4px}
+</style>
+</head><body><main>
+
+<h1>Web capability probe</h1>
+<p class="sub">ACTOR OS · what this browser actually gives us</p>
+
+<div class="warn" id="ctxWarn" hidden>
+<b>This page has to be served over https.</b> Opening it from a downloaded file
+blocks the camera and the microphone, and every test below will fail for the wrong
+reason. Push it to GitHub Pages and open that address on the phone.
+</div>
+
+<div class="t"><div class="th"><b>1 · This device</b><span class="v" id="v1">—</span>
+<button id="b1">Check</button></div>
+<div class="tn">Browser, whether it is running as an installed app, and which APIs are present.
+Nothing is switched on yet.</div><pre id="o1" class="hide"></pre></div>
+
+<div class="t"><div class="th"><b>2 · Rear camera</b><span class="v" id="v2">—</span>
+<button id="b2">Open</button></div>
+<div class="tn">Opens the back camera and reads back what it will let us control —
+zoom, focus, exposure, torch. This is the answer to whether the app can ever behave
+like the camera app.</div><pre id="o2" class="hide"></pre></div>
+
+<div class="t"><div class="th"><b>3 · Front camera</b><span class="v" id="v3">—</span>
+<button id="b3">Open</button></div>
+<div class="tn">Same reading for the selfie camera, which is the one you shoot on.</div>
+<pre id="o3" class="hide"></pre></div>
+
+<div class="t"><div class="th"><b>4 · How big a picture</b><span class="v" id="v4">—</span>
+<button id="b4">Measure</button></div>
+<div class="tn">Asks for 4K, then for 1080p at 60. Reports what came back rather than
+what was asked for.</div><pre id="o4" class="hide"></pre></div>
+
+<div class="t"><div class="th"><b>5 · Recording format</b><span class="v" id="v5">—</span>
+<button id="b5">Record 4s</button></div>
+<div class="tn">Records four seconds and reports the file it actually produced — type,
+size, bitrate. Not what the browser claims it supports.</div><pre id="o5" class="hide"></pre></div>
+
+<div class="t key"><div class="th"><b>6 · A real take</b><span class="v" id="v6">—</span>
+<button id="b6" class="go">Run 30s</button></div>
+<div class="tn"><b>This is the one that decides the product.</b> Camera, microphone,
+recorder and speech recognition all running at once for thirty seconds, with a
+sound played through the speaker partway in — the same load as scene partner.
+Talk the whole time; read anything. It reports whether the footage survived, whether
+the recogniser heard you, and whether playing the reader broke either.</div>
+<video id="pv" playsinline muted class="hide"></video><pre id="o6" class="hide"></pre></div>
+
+<div class="t"><div class="th"><b>7 · Keeping files</b><span class="v" id="v7">—</span>
+<button id="b7">Check</button></div>
+<div class="tn">How much room there is, and whether the phone will promise not to
+delete takes when it needs space.</div><pre id="o7" class="hide"></pre></div>
+
+<div class="sum" id="sum" hidden><h2>What this means</h2><div id="sumBody"></div></div>
+
+<div class="f">
+  <button id="all" class="go">Run every test</button>
+  <button id="copy">Copy results</button>
+  <button id="dl">Download</button>
+</div>
+
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const R={startedAt:new Date().toISOString(),tests:{}};
+
+if(!window.isSecureContext) $('ctxWarn').hidden=false;
+
+function show(n,verdict,data){
+  R.tests['t'+n]={verdict,data};
+  const v=$('v'+n); v.textContent=verdict; v.className='v '+verdict.split(' ')[0];
+  const o=$('o'+n); o.classList.remove('hide'); o.textContent=JSON.stringify(data,null,2);
+  summarise();
+}
+function running(n){ const v=$('v'+n); v.textContent='RUNNING'; v.className='v RUN'; }
+function stopAll(s){ if(s) s.getTracks().forEach(t=>{try{t.stop()}catch(e){}}); }
+
+/* Report exactly what the browser hands back. A capability that is absent is absent,
+   not broken - the difference matters when the answer decides a product. */
+function readTrack(track){
+  const out={settings:{},capabilities:{},controls:{}};
+  try{ out.settings=track.getSettings?track.getSettings():{}; }catch(e){ out.settings={error:String(e)}; }
+  try{ out.capabilities=track.getCapabilities?track.getCapabilities():'getCapabilities() not implemented'; }
+  catch(e){ out.capabilities={error:String(e)}; }
+  const caps=(typeof out.capabilities==='object')?out.capabilities:{};
+  ['zoom','focusMode','focusDistance','exposureMode','exposureCompensation','torch',
+   'whiteBalanceMode','pan','tilt'].forEach(k=>{
+    out.controls[k] = (k in caps) ? caps[k] : 'not offered';
+  });
+  return out;
+}
+
+/* 1 */
+$('b1').onclick=async()=>{
+  running(1);
+  const d={
+    userAgent:navigator.userAgent,
+    secureContext:!!window.isSecureContext,
+    installedAsApp:(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true,
+    screen:{w:screen.width,h:screen.height,dpr:devicePixelRatio,
+            inner:innerWidth+'x'+innerHeight,orientation:(screen.orientation||{}).type||'unknown'},
+    apis:{
+      getUserMedia:!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia),
+      enumerateDevices:!!(navigator.mediaDevices&&navigator.mediaDevices.enumerateDevices),
+      MediaRecorder:typeof MediaRecorder!=='undefined',
+      SpeechRecognition:!!(window.SpeechRecognition||window.webkitSpeechRecognition),
+      AudioContext:!!(window.AudioContext||window.webkitAudioContext),
+      orientationLock:!!(screen.orientation&&screen.orientation.lock),
+      requestFullscreen:!!document.documentElement.requestFullscreen,
+      storagePersist:!!(navigator.storage&&navigator.storage.persist),
+      showSaveFilePicker:typeof window.showSaveFilePicker==='function',
+      shareFiles:!!(navigator.canShare&&navigator.share)
+    }
+  };
+  try{
+    const list=await navigator.mediaDevices.enumerateDevices();
+    d.devices=list.map(x=>({kind:x.kind,label:x.label||'(hidden until permission granted)'}));
+  }catch(e){ d.devices='enumerateDevices failed: '+e.message; }
+  const missing=Object.entries(d.apis).filter(([,v])=>!v).map(([k])=>k);
+  show(1, missing.length?('PART · missing '+missing.length):'YES', d);
+};
+
+/* 2 & 3 */
+async function camera(n,facing){
+  running(n); let s=null;
+  try{
+    s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing}},audio:false});
+    const t=s.getVideoTracks()[0];
+    const d={requested:facing,label:t.label||'(no label)',...readTrack(t)};
+    const offered=Object.entries(d.controls).filter(([,v])=>v!=='not offered').map(([k])=>k);
+    d.summary = offered.length
+      ? ('Controllable: '+offered.join(', '))
+      : 'No camera controls offered. Point and shoot only.';
+    show(n, offered.length?('PART · '+offered.length+' controls'):'NO · no controls', d);
+  }catch(e){ show(n,'NO',{error:e.name+': '+e.message}); }
+  finally{ stopAll(s); }
+}
+$('b2').onclick=()=>camera(2,'environment');
+$('b3').onclick=()=>camera(3,'user');
+
+/* 4 */
+$('b4').onclick=async()=>{
+  running(4);
+  const asks=[
+    {name:'4K 30',video:{facingMode:{ideal:'user'},width:{ideal:3840},height:{ideal:2160},frameRate:{ideal:30}}},
+    {name:'1080p 60',video:{facingMode:{ideal:'user'},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60}}},
+    {name:'1080p 30',video:{facingMode:{ideal:'user'},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}}}
+  ];
+  const got=[];
+  for(const a of asks){
+    let s=null;
+    try{
+      s=await navigator.mediaDevices.getUserMedia({video:a.video,audio:false});
+      const st=s.getVideoTracks()[0].getSettings();
+      got.push({asked:a.name,got:st.width+'x'+st.height+' @'+(st.frameRate||'?')+'fps',
+                matched:(st.width>=a.video.width.ideal)});
+    }catch(e){ got.push({asked:a.name,got:'refused: '+e.name}); }
+    finally{ stopAll(s); await new Promise(r=>setTimeout(r,220)); }
+  }
+  const best=got.find(g=>g.matched);
+  show(4, best?('YES · '+best.asked):'PART · downscaled', {results:got,
+    note:'The slate move needs 4K to punch in without going soft. If 4K was refused, it stays off.'});
+};
+
+/* 5 */
+$('b5').onclick=async()=>{
+  running(5);
+  const candidates=['video/mp4','video/mp4;codecs=h264','video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+                    'video/webm','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus'];
+  const claimed={};
+  candidates.forEach(m=>{ try{ claimed[m]=MediaRecorder.isTypeSupported(m); }catch(e){ claimed[m]='threw'; } });
+  let s=null;
+  try{
+    s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'user'}},audio:true});
+    const blob=await new Promise((res,rej)=>{
+      let rec; try{ rec=new MediaRecorder(s); }catch(e){ return rej(e); }
+      const parts=[];
+      rec.ondataavailable=e=>{ if(e.data.size) parts.push(e.data); };
+      rec.onstop=()=>res(new Blob(parts,{type:rec.mimeType||''}));
+      rec.onerror=e=>rej(e.error||new Error('recorder error'));
+      rec.start(); setTimeout(()=>{ try{rec.stop()}catch(e){} },4000);
+    });
+    const kbps=Math.round(blob.size*8/4/1000);
+    show(5, blob.size?'YES':'NO', {claimedSupport:claimed,
+      actual:{type:blob.type||'(none reported)',bytes:blob.size,approxKbps:kbps}});
+  }catch(e){ show(5,'NO',{claimedSupport:claimed,error:e.name+': '+e.message}); }
+  finally{ stopAll(s); }
+};
+
+/* 6 — the one that matters */
+$('b6').onclick=async()=>{
+  running(6);
+  const d={durationRequested:'30s',speech:{results:0,errors:[],ends:0,lastHeard:''},
+           playback:{attempted:false,ok:null},recording:{}};
+  let s=null,rec=null,sr=null,ac=null;
+  const vid=$('pv'); vid.classList.remove('hide');
+  try{
+    s=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'user'}},
+      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    vid.srcObject=s; await vid.play().catch(()=>{});
+
+    const parts=[];
+    rec=new MediaRecorder(s);
+    rec.ondataavailable=e=>{ if(e.data.size) parts.push(e.data); };
+    const done=new Promise(res=>{ rec.onstop=()=>res(new Blob(parts,{type:rec.mimeType||''})); });
+    rec.onerror=e=>{ d.recording.recorderError=String((e&&e.error)||e); };
+    rec.start();
+
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(SR){
+      sr=new SR(); sr.continuous=true; sr.interimResults=true; sr.lang='en-US';
+      sr.onresult=e=>{ d.speech.results++;
+        let t=''; for(let i=e.resultIndex;i<e.results.length;i++) t+=e.results[i][0].transcript+' ';
+        d.speech.lastHeard=t.trim().slice(-90); };
+      sr.onerror=e=>{ d.speech.errors.push({at:Math.round(performance.now()/1000)+'s',error:e.error}); };
+      sr.onend=()=>{ d.speech.ends++; try{ sr.start(); }catch(e){} };
+      try{ sr.start(); }catch(e){ d.speech.startError=String(e); }
+    } else { d.speech.available=false; }
+
+    /* Halfway in, play a sound the way scene partner plays the reader. On iOS this is
+       where the audio session can be taken away from the capture. */
+    setTimeout(async()=>{
+      d.playback.attempted=true;
+      try{
+        const AC=window.AudioContext||window.webkitAudioContext;
+        ac=new AC(); if(ac.state==='suspended') await ac.resume();
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.frequency.value=340; g.gain.value=0.16;
+        o.connect(g); g.connect(ac.destination); o.start();
+        setTimeout(()=>{ try{o.stop()}catch(e){} },1500);
+        d.playback.ok=true; d.playback.contextState=ac.state;
+      }catch(e){ d.playback.ok=false; d.playback.error=String(e); }
+      const vt=s.getVideoTracks()[0], at=s.getAudioTracks()[0];
+      d.playback.videoTrackAfter=vt?vt.readyState:'none';
+      d.playback.audioTrackAfter=at?at.readyState:'none';
+      d.playback.recorderStateAfter=rec.state;
+    },15000);
+
+    await new Promise(r=>setTimeout(r,30000));
+    try{ rec.stop(); }catch(e){}
+    const blob=await done;
+    if(sr){ try{ sr.onend=null; sr.stop(); }catch(e){} }
+
+    d.recording={type:blob.type||'(none reported)',bytes:blob.size,
+                 secondsRequested:30,approxKbps:Math.round(blob.size*8/30/1000)};
+    const vt=s.getVideoTracks()[0], at=s.getAudioTracks()[0];
+    d.tracksAtEnd={video:vt?vt.readyState:'none',audio:at?at.readyState:'none'};
+
+    const footage=blob.size>0 && d.tracksAtEnd.video==='live';
+    const heard=d.speech.results>0;
+    d.verdictPlain = footage&&heard ? 'Footage survived and the recogniser heard you. Scene partner can run hands-off.'
+      : footage&&!heard ? 'Footage survived but nothing was recognised. Scene partner needs the button or a clicker.'
+      : !footage&&heard ? 'The recogniser worked but the recording did not survive. Do not ship listening during a take.'
+      : 'Neither survived. Check permissions, then look at the errors below.';
+    show(6, footage&&heard?'YES':footage?'PART · no speech':'NO · footage lost', d);
+  }catch(e){ show(6,'NO',{...d,error:e.name+': '+e.message}); }
+  finally{ stopAll(s); if(ac){ try{ac.close()}catch(e){} } vid.srcObject=null; vid.classList.add('hide'); }
+};
+
+/* 7 */
+$('b7').onclick=async()=>{
+  running(7);
+  const d={};
+  try{
+    const est=(navigator.storage&&navigator.storage.estimate)?await navigator.storage.estimate():null;
+    d.quotaMB=est&&est.quota?Math.round(est.quota/1048576):'unknown';
+    d.usedMB=est&&est.usage?Math.round(est.usage/1048576):'unknown';
+    if(navigator.storage&&navigator.storage.persisted) d.alreadyPersisted=await navigator.storage.persisted();
+    if(navigator.storage&&navigator.storage.persist) d.persistGranted=await navigator.storage.persist();
+    else d.persistGranted='persist() not implemented';
+    d.note='Without a persistence grant the phone may delete takes when it needs space, without asking.';
+    show(7, d.persistGranted===true?'YES':'PART · evictable', d);
+  }catch(e){ show(7,'NO',{error:String(e)}); }
+};
+
+/* Run everything except the 30s take, which needs you talking */
+$('all').onclick=async()=>{
+  for(const n of [1,2,3,4,5,7]){ $('b'+n).click(); await new Promise(r=>setTimeout(r,4800)); }
+  alert('Done. Test 6 is left — press "Run 30s" and talk for the whole thirty seconds.');
+};
+
+function summarise(){
+  const t=R.tests, lines=[];
+  if(t.t2||t.t3){
+    const c=[...Object.values((t.t2&&t.t2.data.controls)||{}),...Object.values((t.t3&&t.t3.data.controls)||{})];
+    const any=c.some(v=>v!=='not offered');
+    lines.push(any?'The camera offers at least one control. Worth reading which.'
+                  :'No camera controls at all. This can never behave like the camera app.');
+  }
+  if(t.t6) lines.push(t.t6.data.verdictPlain||'');
+  if(t.t7) lines.push(t.t7.data.persistGranted===true?'Takes are protected from being evicted.'
+                                                     :'Takes can be deleted by the phone without warning.');
+  if(!lines.length) return;
+  $('sum').hidden=false;
+  $('sumBody').innerHTML=lines.filter(Boolean).map(l=>'<div>'+l+'</div>').join('');
+}
+
+$('copy').onclick=async()=>{
+  const txt=JSON.stringify(R,null,2);
+  try{ await navigator.clipboard.writeText(txt); alert('Copied. Paste it back.'); }
+  catch(e){ const o=$('o1'); o.classList.remove('hide'); o.textContent=txt; alert('Clipboard blocked. The results are printed under test 1 — select and copy.'); }
+};
+$('dl').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(R,null,2)],{type:'application/json'}));
+  a.download='actor-os-probe-'+Date.now()+'.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+};
+</script></body></html>
