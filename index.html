@@ -263,6 +263,13 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
    </ul>
    <p>Press record and you get <b>3 &middot; 2 &middot; 1</b> to get set. Nothing is captured during
    the count. Tap to cancel.</p>
+   <p>Once you are rolling in a scene, <b>tapping the frame pushes the scene on</b> &mdash;
+   it is the biggest target on the phone and it is there for the moment the partner
+   goes quiet. It cannot stop your take. <b>Stopping is the round button</b>, the same
+   as the camera app: one press, on purpose.</p>
+   <p>A bad take is one press. <b>ERASE</b> deletes it &mdash; off the phone, out of the
+   database, gone &mdash; and puts you back at the top of the scene. <b>GO AGAIN</b> keeps
+   it and resets. Nothing here needs a clicker; one just makes it easier.</p>
    <p>Got a Bluetooth clicker? Turn on <b>REMOTE</b> and you never touch the phone.</p>
    <p>In scene partner, <b>LISTEN FOR MY CUE</b> is already on. It is what makes the
    timing work: the scene runs on ACTION, stops dead on your line, and does not move
@@ -1268,17 +1275,22 @@ function listenStart(){
   }
   if(err==='no-speech'||err==='aborted') return;      // ordinary, onend will restart
   listenFails++;                                       // audio-capture, network, the rest
-  if(listenFails>=LISTEN_MAX_FAILS){
+  /* The cap exists so a permanently dead recogniser does not retry until the battery
+     is gone. It must never apply mid-take. If you are rolling, it keeps trying at
+     1.6s forever - a scene partner that might come back is worth more than a tidy
+     shutdown, and giving up on you while you are in it is not something this app
+     gets to do. */
+  if(listenFails>=LISTEN_MAX_FAILS && !sRecOn){
    listenStop(); stageToast('Listening stopped. Use \u25b6 or your clicker.');
   }
  };
  rec2.onend=()=>{
   if(!LISTEN)return;
-  if(listenFails>=LISTEN_MAX_FAILS){ listenStop(); return; }
+  if(listenFails>=LISTEN_MAX_FAILS && !sRecOn){ listenStop(); return; }
   const wait=listenFails?Math.min(1600,250*listenFails):120;
   setTimeout(()=>{ if(!LISTEN||!rec2)return;
    try{ rec2.start(); }catch(e){ listenFails++;
-    if(listenFails>=LISTEN_MAX_FAILS){ listenStop(); stageToast('Listening stopped. Use \u25b6 or your clicker.'); } }
+    if(listenFails>=LISTEN_MAX_FAILS && !sRecOn){ listenStop(); stageToast('Listening stopped. Use \u25b6 or your clicker.'); } }
   }, wait);
  };
  try{ rec2.start(); LISTEN=true; listenFails=0; }catch(e){ return stageToast('Could not start listening.'); }
@@ -2075,6 +2087,19 @@ function speakPartner(){
 }
 /* Three seconds to get set. You press record, the count runs on screen, then it
    rolls. Nothing is captured during the count - the take starts clean at zero. */
+/* The frame is the biggest target on the phone and your hand goes up there under
+   pressure, so what it does has to be the move you actually want in that moment.
+
+   Not rolling - it starts the take, the way the camera app does.
+   Rolling, in a scene - it pushes the scene on. That is the reach you make when the
+   partner has gone quiet, and it must never be the reach that kills the take.
+
+   Stopping is the button. Stopping is a decision, never a reflex. A clicker makes
+   this easier and nothing here needs one. */
+function stageTap(){
+ if(sRecOn && (MODE==='PARTNER'||MODE==='PROMPTER')) return stageStep(1);
+ stageRec();
+}
 function stageRec(){
  const btn=$('sRec');
  if(sCount){ cancelCountdown(); return; }        // pressing again during the count aborts
@@ -2145,6 +2170,7 @@ function stopRecording(){
  try{ sRecorder&&sRecorder.state!=='inactive'&&sRecorder.stop(); }catch(e){}
  sRecOn=false; const btn=$('sRec'); if(btn&&btn.classList)btn.classList.remove('rec');
  clearInterval(sTimer);
+ try{ flushStageToast(); }catch(e){}
 }
 
 /* You stop recording and you need to know, immediately, that you got it.
@@ -2156,7 +2182,7 @@ function showTakeReview(t, blob){
    <div class="rvbar">
      <div><b>Take ${t.n}</b><small>${t.secs}s &middot; ${(t.bytes/1048576).toFixed(1)} MB &middot; <span style="color:#E0A23C">not saved to this phone yet</span></small></div>
      <div class="rvbtns">
-       <button class="sBtn" onclick="reviewDrop('${t.id}')">DROP</button>
+       <button class="sBtn" onclick="reviewDrop('${t.id}')" style="border-color:#d9694e;color:#d9694e;margin-right:14px">ERASE</button>
        <button class="sBtn" onclick="reviewAgain()">GO AGAIN</button>
        <button class="sBtn savebtn" onclick="saveTakeToDevice('${t.id}')">&#8681; SAVE TO PHONE</button>
        <button class="sBtn keep" onclick="reviewKeep('${t.id}')">KEEP</button>
@@ -2169,10 +2195,26 @@ function closeReview(){ const w=$('takeReview'); if(w&&w.remove) w.remove(); }
 function reviewAgain(){ closeReview();
  if(MODE==='PARTNER'){ SIDES.run=activeScript(); sIdx=0; drawStage(); return; }
  if(MODE&&MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); if(sIdx<0)sIdx=0; drawStage(); } }
+/* A bad take is not a filing decision. It is gone, now, and you are back at the top
+   of the scene ready to go - one press, no menu. This used to set a status flag and
+   leave the video sitting in the database, which meant "drop" was a label and your
+   phone kept the fluff you thought you had binned. */
 function reviewDrop(id){
- const t=state.takes.find(x=>x.id===id); if(t)t.status='DROP';
- try{ localStorage.setItem(KEY,JSON.stringify(state)); renderTakes(); }catch(e){}
- closeReview(); stageToast('Dropped.');
+ closeReview();
+ const i=(state.takes||[]).findIndex(x=>x.id===id);
+ if(i>=0){
+  const t=state.takes[i];
+  try{ if(t&&t.url) URL.revokeObjectURL(t.url); }catch(e){}
+  state.takes.splice(i,1);
+ }
+ try{ ActorReader.delTake(id); }catch(e){}
+ try{ window.currentBlob=null; }catch(e){}
+ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+ try{ renderTakes(); }catch(e){}
+ /* Back to the top, because the reason you erased it is that you want another go. */
+ if(MODE==='PARTNER'){ SIDES.run=activeScript(); sIdx=0; drawStage(); }
+ else if(MODE&&MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); if(sIdx<0)sIdx=0; drawStage(); }
+ stageToast('Erased. Ready when you are.');
 }
 function reviewKeep(id){
  const t=state.takes.find(x=>x.id===id); if(t)t.status='SURVIVOR';
@@ -2184,10 +2226,18 @@ function reviewKeep(id){
  setTimeout(()=>{ saveTakeToDevice(id); }, 350);
 }
 function stageToast(msg){
+ /* Nothing writes on the frame while you are in a take. A message about the
+    recogniser is not worth pulling your eye off the lens - it waits until you have
+    stopped and then it tells you. */
+ if(typeof sRecOn!=='undefined' && sRecOn){ window._sttQueue=msg; return; }
  let el=$('stageToast');
  if(!el||!el.parentNode){ el=document.createElement('div'); el.id='stageToast'; el.className='stoast'; document.body.appendChild(el); }
  el.textContent=msg; el.classList.add('on');
  clearTimeout(window._stt); window._stt=setTimeout(()=>el.classList.remove('on'),2200);
+}
+function flushStageToast(){
+ const m=window._sttQueue; window._sttQueue=null;
+ if(m) setTimeout(()=>stageToast(m),350);
 }
 
 document.addEventListener('keydown',e=>{
@@ -2198,7 +2248,7 @@ document.addEventListener('keydown',e=>{
 });
 </script>
 <div id="stage">
-  <video id="stageVid" autoplay muted playsinline onclick="stageRec()"></video>
+  <video id="stageVid" autoplay muted playsinline onclick="stageTap()"></video>
   <div class="sTop">
     <button class="sBtn" onclick="exitStage()">&times; DONE</button>
     <span class="sTC" id="sTC">00:00</span>
