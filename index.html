@@ -256,15 +256,18 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
    <p>Then pick how you are working:</p>
    <ul>
     <li><b>Solo, or with a reader.</b> Nothing on screen but the frame.</li>
-    <li><b>Scene partner.</b> Plays back the lines you recorded and hands you the floor.
-        Your lines are never shown.</li>
+    <li><b>Scene partner.</b> Runs the scene from the top in your own voice. If the
+        other characters talk for five lines before you come in, you hear those five
+        lines. No line is ever on screen &mdash; theirs or yours.</li>
     <li><b>Teleprompter.</b> Your lines on screen, at whatever level you want to see them.</li>
    </ul>
    <p>Press record and you get <b>3 &middot; 2 &middot; 1</b> to get set. Nothing is captured during
    the count. Tap to cancel.</p>
    <p>Got a Bluetooth clicker? Turn on <b>REMOTE</b> and you never touch the phone.</p>
-   <p>On the stage, <b>LISTEN FOR MY CUE</b> makes the scene partner wait until you have
-   actually finished your line before it plays the next one.</p>
+   <p>In scene partner, <b>LISTEN FOR MY CUE</b> is already on. It is what makes the
+   timing work: the scene runs on ACTION, stops dead on your line, and does not move
+   until it hears you finish. Tap it off if you would rather run the scene on the
+   clicker or the arrows.</p>
 
    <h4>03 &middot; CUT</h4>
    <p>Pick a take, set the handles, choose a size. It really re-encodes &mdash; this is the step
@@ -385,7 +388,7 @@ h1{font-size:18px;letter-spacing:.11em;margin:0}
     <button class="mode" onclick="startMode('READER')">
       <b>Solo, or with a reader</b><span>Nothing on screen but the frame. Someone off camera reads with you, or you go it alone.</span></button>
     <button class="mode" onclick="startMode('PARTNER')">
-      <b>Scene partner</b><span>Plays back the lines you recorded and waits for you. Your lines are never shown.</span></button>
+      <b>Scene partner</b><span>Runs the scene from the top in your own voice, stops on your line, waits until it hears you finish. No lines on screen.</span></button>
     <button class="mode" onclick="startMode('PROMPTER')">
       <b>Teleprompter</b><span>Your lines on screen, at whatever level you want to see them.</span></button>
   </div>
@@ -1213,8 +1216,37 @@ function stopPreview(){
    iOS may send audio to Apple. That is why this is opt-in and off by default, and
    why MANUAL and the tap-to-advance path are never removed. */
 let LISTEN=false, rec2=null, listenHeard='', listenPaused=false;
+/* The mic is open while the partner is talking, so the recogniser hears the
+   playback. It cannot advance on it - listenCheck returns early unless the line is
+   yours - but the words land in the buffer, and a result that arrives a beat after
+   the step lands there while the floor is already back with you. If their line
+   happens to resemble yours that is a false MATCH, and the system talks over you.
+   So playback closes the gate, and it stays shut for a settle window afterwards. */
+let speakUntil=0, partnerSpeaking=false;
+const LISTEN_SETTLE=420;
+function listenGate(ms){ speakUntil=Math.max(speakUntil, Date.now()+(ms||0)); }
+function listenGated(){ return partnerSpeaking || Date.now()<speakUntil; }
+
+/* The buffer used to be a flat last-40 words. A line longer than that lost its
+   front, coverage collapsed, and you sat on HOLD waiting for a MATCH that could
+   not arrive. The window is sized to the line you are actually saying. */
+function listenWindow(){
+ const run=(SIDES.run||SIDES.script)||[];
+ const b=run[sIdx];
+ const n=(b&&b.text)?((String(b.text).match(/[A-Za-z0-9']+/g)||[]).length):0;
+ return Math.max(40, Math.ceil(n*1.6)+8);
+}
 
 function listenSupported(){ return !!(window.SpeechRecognition||window.webkitSpeechRecognition); }
+
+/* The recogniser stops on its own and has to be restarted. It also dies for reasons
+   that are not your fault - the camera already holds the mic, the service is busy,
+   the network drops. The old code restarted blind on every one of those, which spins
+   hot and leaves a badge that looks alive on a recogniser that is dead. Transient
+   failures get a few backed-off retries; after that listening switches itself off in
+   the open, so you know to run the scene on the arrows or the clicker. */
+let listenFails=0;
+const LISTEN_MAX_FAILS=4;
 
 function listenStart(){
  if(!listenSupported()) return stageToast('This browser cannot listen for cues.');
@@ -1222,21 +1254,40 @@ function listenStart(){
  try{ rec2=new R(); }catch(e){ return stageToast('Could not start listening.'); }
  rec2.continuous=true; rec2.interimResults=true; rec2.lang='en-US';
  rec2.onresult=e=>{
-  if(listenPaused)return;
+  if(listenPaused||listenGated())return;
+  listenFails=0;
   let txt='';
   for(let i=e.resultIndex;i<e.results.length;i++) txt+=e.results[i][0].transcript+' ';
-  listenHeard=(listenHeard+' '+txt).trim().split(/\s+/).slice(-40).join(' ');
+  listenHeard=(listenHeard+' '+txt).trim().split(/\s+/).slice(-listenWindow()).join(' ');
   listenCheck();
  };
- rec2.onerror=e=>{ if(e.error==='not-allowed'){ LISTEN=false; listenUI(); stageToast('Microphone blocked for speech.'); } };
- rec2.onend=()=>{ if(LISTEN){ try{ rec2.start(); }catch(e){} } };   // it stops on its own
- try{ rec2.start(); LISTEN=true; }catch(e){ return stageToast('Could not start listening.'); }
+ rec2.onerror=e=>{
+  const err=e&&e.error;
+  if(err==='not-allowed'||err==='service-not-allowed'){
+   listenStop(); stageToast('Microphone blocked for speech. Use \u25b6 or your clicker.'); return;
+  }
+  if(err==='no-speech'||err==='aborted') return;      // ordinary, onend will restart
+  listenFails++;                                       // audio-capture, network, the rest
+  if(listenFails>=LISTEN_MAX_FAILS){
+   listenStop(); stageToast('Listening stopped. Use \u25b6 or your clicker.');
+  }
+ };
+ rec2.onend=()=>{
+  if(!LISTEN)return;
+  if(listenFails>=LISTEN_MAX_FAILS){ listenStop(); return; }
+  const wait=listenFails?Math.min(1600,250*listenFails):120;
+  setTimeout(()=>{ if(!LISTEN||!rec2)return;
+   try{ rec2.start(); }catch(e){ listenFails++;
+    if(listenFails>=LISTEN_MAX_FAILS){ listenStop(); stageToast('Listening stopped. Use \u25b6 or your clicker.'); } }
+  }, wait);
+ };
+ try{ rec2.start(); LISTEN=true; listenFails=0; }catch(e){ return stageToast('Could not start listening.'); }
  listenUI();
 }
 function listenStop(){
  LISTEN=false;
- try{ if(rec2){ rec2.onend=null; rec2.stop(); } }catch(e){}
- rec2=null; listenHeard=''; listenUI();
+ try{ if(rec2){ rec2.onend=null; rec2.onerror=null; rec2.onresult=null; rec2.stop(); } }catch(e){}
+ rec2=null; listenHeard=''; listenFails=0; speakUntil=0; partnerSpeaking=false; listenUI();
 }
 function listenToggle(){ LISTEN?listenStop():listenStart(); }
 
@@ -1917,7 +1968,11 @@ function startMode(m){
  if((m==='PARTNER'||m==='PROMPTER') && !activeScript().length){
   $('modeWarn').style.display='block'; return; }
  MODE=m; sIdx=0;
- if(MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); }
+ /* PARTNER runs the scene as written. If two other characters talk for five lines
+    before you open your mouth, you hear those five lines. Starting at your first
+    line throws away the run-up you are supposed to be playing off. */
+ if(MODE==='PARTNER'){ SIDES.run=activeScript(); sIdx=0; }
+ else if(MODE==='PROMPTER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); }
  if(sIdx<0)sIdx=0;
  openStage();
 }
@@ -1938,6 +1993,12 @@ async function openStage(){
  }catch(e){ alert('Camera unavailable: '+e.message); return exitStage(); }
  drawStage(); liveFlag(true);
  try{ const r=$('stageRemote'); if(r&&r.style)r.style.display=REMOTE_ON?'':'none'; }catch(e){}
+ /* PARTNER is a timing instrument. Without listening you have to reach up and tap
+    the screen every time you finish a line, which is the thing the mode exists to
+    remove - so it is on when the mode opens. It stays a toggle: tap it off and the
+    arrows and the clicker still work. Silent if the browser has no recogniser -
+    an unsupported browser should not open with an error. */
+ try{ if(MODE==='PARTNER'&&!LISTEN&&listenSupported()) listenStart(); }catch(e){}
 }
 function exitStage(){
  cancelCountdown(); if(sRecOn) stopRecording();
@@ -1960,10 +2021,13 @@ function drawStage(){
  if(MODE==='READER'){ T.innerHTML=''; N.innerHTML=''; return; }
  const b=(SIDES.run||SIDES.script)[sIdx]; if(!b){T.innerHTML='';N.innerHTML='';return;}
  if(MODE==='PARTNER'){
-  // the app reads the other part; your line is never shown
+  /* Nothing on this screen is a line. Yours is never shown because you are acting,
+     not reading. Theirs is never shown because you are meant to hear it - reading
+     their line off the glass is how you end up playing the page instead of the
+     scene. All that is left is who has the floor. */
   T.innerHTML = b.mine
     ? `<div class="sCue">your line</div>`
-    : `<div class="sWho">${esc2(b.who)}</div><div class="sCue">${esc2(b.text)}</div>`;
+    : `<div class="sWho">${esc2(b.who)}</div>`;
  } else {
   const mode=$('displayMode').value;
   const shown = b.mine ? displayLine(b.text, mode, b.cue) : '';
@@ -1976,8 +2040,16 @@ function drawStage(){
    <button class="sBtn" onclick="stageStep(1)">&#9654;</button>
    ${MODE==='PARTNER'?`<button class="sBtn" onclick="speakPartner()">&#9835; READ</button>`:''}`;
 }
-function stageStep(d){ listenHeard=''; sIdx=Math.max(0,Math.min((SIDES.run||SIDES.script).length-1,sIdx+d)); drawStage();
- if(MODE==='PARTNER'&&!(SIDES.run||SIDES.script)[sIdx].mine) speakPartner(); }
+function stageStep(d){
+ listenHeard='';
+ const run=(SIDES.run||SIDES.script), was=sIdx;
+ sIdx=Math.max(0,Math.min(run.length-1,sIdx+d));
+ drawStage();
+ /* If we did not actually move we are parked on the last line. Speaking again from
+    the playback callback would replay it forever, so the step has to have landed
+    somewhere new before the partner reads. */
+ if(sIdx===was) return;
+ if(MODE==='PARTNER'&&run[sIdx]&&!run[sIdx].mine) speakPartner(); }
 function speakPartner(){
  const b=(SIDES.run||SIDES.script)[sIdx]; if(!b||b.mine)return;
  const k=boothKey(b);
@@ -1985,11 +2057,21 @@ function speakPartner(){
  const c=(SIDES.pick&&SIDES.pick[k]?arr.find(x=>x.id===SIDES.pick[k]):null)||arr[arr.length-1]||BOOTH[k];
  if(!c){
   // no recording for this line - say so rather than substituting a robot
+  partnerSpeaking=false;
   $('sText').innerHTML=`<div class="sWho">${esc2(b.who)}</div>
     <div class="sCue" style="color:#E0A23C">not recorded &middot; tap &#9654; to step past</div>`;
   return;
  }
- ActorReader.play(c.blob, ()=>{ if(MODE==='PARTNER') stageStep(1); });
+ /* Shut while it plays, and for a settle window after, so a late result carrying
+    their words cannot land on your turn. Cleared before the step, because the step
+    may start the next line and close the gate again. */
+ partnerSpeaking=true;
+ ActorReader.play(c.blob, ()=>{
+  partnerSpeaking=false;
+  listenGate(LISTEN_SETTLE);
+  listenHeard='';
+  if(MODE==='PARTNER') stageStep(1);
+ });
 }
 /* Three seconds to get set. You press record, the count runs on screen, then it
    rolls. Nothing is captured during the count - the take starts clean at zero. */
@@ -2051,6 +2133,13 @@ function beginRecording(st,btn){
  sRecorder.start(); sRecOn=true; btn.classList.add('rec'); sT0=Date.now();
  sTimer=setInterval(()=>{ const t=Math.floor((Date.now()-sT0)/1000);
   $('sTC').textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); },250);
+ /* ACTION is the cue for the scene, not just for the camera. If the line we are
+    parked on belongs to someone else, it plays now - after the count, inside the
+    take. Nothing plays during the count; the tape starts clean. */
+ if(MODE==='PARTNER'){
+  const b0=(SIDES.run||SIDES.script)[sIdx];
+  if(b0&&!b0.mine) speakPartner();
+ }
 }
 function stopRecording(){
  try{ sRecorder&&sRecorder.state!=='inactive'&&sRecorder.stop(); }catch(e){}
@@ -2077,7 +2166,9 @@ function showTakeReview(t, blob){
  document.body.appendChild(w);
 }
 function closeReview(){ const w=$('takeReview'); if(w&&w.remove) w.remove(); }
-function reviewAgain(){ closeReview(); if(MODE&&MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); if(sIdx<0)sIdx=0; drawStage(); } }
+function reviewAgain(){ closeReview();
+ if(MODE==='PARTNER'){ SIDES.run=activeScript(); sIdx=0; drawStage(); return; }
+ if(MODE&&MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); if(sIdx<0)sIdx=0; drawStage(); } }
 function reviewDrop(id){
  const t=state.takes.find(x=>x.id===id); if(t)t.status='DROP';
  try{ localStorage.setItem(KEY,JSON.stringify(state)); renderTakes(); }catch(e){}
