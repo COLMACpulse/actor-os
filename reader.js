@@ -113,6 +113,7 @@ A.recording=function(){ return !!rec && rec.state==='recording'; };
    iOS also routes audio to the earpiece while a mic stream is open, so the mic is
    released before playback. */
 let el=null, actx=null, curSrc=null, curGain=null;
+let curPos=null;   // {ctx,t0,dur} for Web Audio, or {el} for the fallback element
 let USER_GAIN=1.6;
 A.setGain=function(g){ USER_GAIN=Math.max(0.5,Math.min(6,g||1)); try{localStorage.setItem('actor_os_readergain',String(USER_GAIN));}catch(e){} };
 A.getGain=function(){ try{const v=parseFloat(localStorage.getItem('actor_os_readergain'));if(v)USER_GAIN=v;}catch(e){} return USER_GAIN; };
@@ -153,21 +154,36 @@ A.play=async function(blob,onended){
   comp.threshold.value=-18; comp.knee.value=12; comp.ratio.value=3;
   comp.attack.value=0.004; comp.release.value=0.18;
   src.connect(g); g.connect(comp); comp.connect(c.destination);
-  src.onended=()=>{ curSrc=null; if(onended)onended(); };
+  src.onended=()=>{ curSrc=null; curPos=null; if(onended)onended(); };
   src.start(0);
   curSrc=src; curGain=g;
+  /* Where the playback actually is, read from the audio clock rather than a timer.
+     A timer drifts against the sound; the context clock IS the sound. */
+  curPos={ctx:c, t0:c.currentTime, dur:buf.duration};
   return src;
  }catch(e){
   // fall back to the element if Web Audio cannot decode this container
   el=new Audio(URL.createObjectURL(blob));
   el.volume=1;
-  el.onended=()=>{ try{URL.revokeObjectURL(el.src)}catch(e2){}; if(onended)onended(); };
+  curPos={el};
+  el.onended=()=>{ curPos=null; try{URL.revokeObjectURL(el.src)}catch(e2){}; if(onended)onended(); };
   el.onerror=()=>{ if(onended)onended(); };
   el.play().catch(()=>{ if(onended)onended(); });
   return el;
  }
 };
-A.stopPlay=function(){
+/* How far into the line the voice has got, or null when nothing is playing. This is
+   what lets the words on the screen keep up with the words in the room. */
+A.playPos=function(){
+ try{
+  if(!curPos) return null;
+  if(curPos.el){ const d=curPos.el.duration;
+   if(!isFinite(d)||d<=0) return null;
+   return {t:curPos.el.currentTime, dur:d}; }
+  return {t:Math.max(0,curPos.ctx.currentTime-curPos.t0), dur:curPos.dur};
+ }catch(e){ return null; }
+};
+A.stopPlay=function(){ curPos=null;
  if(curSrc){ try{curSrc.onended=null;curSrc.stop();}catch(e){} curSrc=null; }
  if(el){ try{el.pause();URL.revokeObjectURL(el.src);}catch(e){} el=null; }
 };

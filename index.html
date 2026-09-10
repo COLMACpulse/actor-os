@@ -85,7 +85,17 @@ body{padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset
  background:rgba(217,105,78,.92);color:#fff;border-radius:9px;padding:10px 13px;font:500 12px/1.45 var(--mono,ui-monospace);display:none}
 .sCoach.on{display:block}
 .sCoach.check{background:rgba(224,162,60,.94);color:#12100c}
-@media(orientation:landscape){.sLine{font-size:clamp(20px,3.4vw,34px)}}
+@media(orientation:landscape){.sLine{font-size:clamp(20px,3.4vw,34px)}
+/* green is still to come, red is already spoken, white is roughly where the voice is */
+.wd{color:#7BD79B;transition:color .10s linear}
+.wd.said{color:#D9694E}
+.wd.now{color:#fff;text-shadow:0 0 14px rgba(255,255,255,.45)}
+.sHear{margin-top:10px;font:11px/1 var(--mono,ui-monospace,Menlo,monospace);letter-spacing:.14em;
+  color:#646b75;display:flex;align-items:center;gap:7px}
+.sHear.on{color:#7BD79B}
+.sHear i{width:9px;height:9px;border-radius:50%;background:currentColor;display:inline-block}
+.sHear.on i{animation:hearPulse 1.15s ease-in-out infinite}
+@keyframes hearPulse{0%,100%{opacity:.28;transform:scale(.82)}50%{opacity:1;transform:scale(1)}}}
 
 .review{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;padding:14px}
 .rv{width:100%;max-width:min(900px,94vw);display:flex;flex-direction:column;gap:12px}
@@ -2234,8 +2244,7 @@ function startMode(m){
  /* PARTNER runs the scene as written. If two other characters talk for five lines
     before you open your mouth, you hear those five lines. Starting at your first
     line throws away the run-up you are supposed to be playing off. */
- if(MODE==='PARTNER'){ SIDES.run=activeScript(); sIdx=0; }
- else if(MODE==='PROMPTER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); }
+ if(MODE==='PARTNER'||MODE==='PROMPTER'){ SIDES.run=activeScript(); sIdx=0; }
  if(sIdx<0)sIdx=0;
  openStage();
 }
@@ -2264,12 +2273,13 @@ async function openStage(){
     remove - so it is on when the mode opens. It stays a toggle: tap it off and the
     arrows and the clicker still work. Silent if the browser has no recogniser -
     an unsupported browser should not open with an error. */
- try{ if(MODE==='PARTNER'&&!LISTEN&&listenSupported()) listenStart(); }catch(e){}
+ try{ if((MODE==='PARTNER'||MODE==='PROMPTER')&&!LISTEN&&listenSupported()) listenStart(); }catch(e){}
 }
 function exitStage(){
  cancelCountdown(); if(sRecOn) stopRecording();
  clearInterval(sTimer); clearTimeout(sCoachT); sTimer=sCoachT=null;
  try{ ActorReader.stopPlay(); }catch(e){}
+ try{ highlightStop(); }catch(e){}
  try{ listenStop(); }catch(e){}
  try{ if(window.PC&&PC.stop)PC.stop(); }catch(e){}
  releaseAll();
@@ -2296,10 +2306,25 @@ function drawStage(){
     : `<div class="sWho">${esc2(b.who)}</div>`;
  } else {
   const mode=$('displayMode').value;
-  const shown = b.mine ? displayLine(b.text, mode, b.cue) : '';
-  T.innerHTML = b.mine
-    ? `${b.cue?`<div class="sCue">${esc2(b.cue)}</div>`:''}<div class="sLine">${esc2(shown)}</div>`
-    : `<div class="sWho">${esc2(b.who)}</div><div class="sCue">${esc2(b.text)}</div>`;
+  if(!b.mine){
+   /* The system's line, in full, because in teleprompter you are meant to see it.
+      Green is still to come, red is already said, white is roughly where the voice
+      is now. */
+   T.innerHTML=`<div class="sWho">${esc2(b.who)}</div>`+
+     `<div class="sLine" id="sSpeak">${highlightBuild(b.text)}</div>`;
+   highlightBind(); highlightAt(0);
+  } else {
+   const shown = displayLine(b.text, mode, b.cue);
+   const full = (mode==='FULL_LINE');
+   /* Your own line. When the whole line is on screen it lights up as the recogniser
+      actually hears it, which is a truer "listening" light than any icon. */
+   T.innerHTML =
+     `${b.cue?`<div class="sCue">${esc2(b.cue)}</div>`:''}`+
+     `<div class="sLine">${full?highlightBuild(b.text):esc2(shown)}</div>`+
+     `<div class="sHear ${LISTEN?'on':''}" id="sHear">${
+        LISTEN?'<i></i>LISTENING':'NOT LISTENING &middot; tap the frame to move on'}</div>`;
+   if(full){ highlightBind(); highlightAt(heardUpTo(b.text,listenHeard)); }
+  }
  }
  N.innerHTML=`<button class="sBtn" onclick="stageStep(-1)">&#9664;</button>
    <span class="sBtn" style="pointer-events:none">${sIdx+1} / ${(SIDES.run||SIDES.script).length}</span>
@@ -2315,7 +2340,7 @@ function stageStep(d){
     the playback callback would replay it forever, so the step has to have landed
     somewhere new before the partner reads. */
  if(sIdx===was) return;
- if(MODE==='PARTNER'&&run[sIdx]&&!run[sIdx].mine) speakPartner(); }
+ if((MODE==='PARTNER'||MODE==='PROMPTER')&&run[sIdx]&&!run[sIdx].mine) speakPartner(); }
 function speakPartner(){
  const b=(SIDES.run||SIDES.script)[sIdx]; if(!b||b.mine)return;
  const k=boothKey(b);
@@ -2332,11 +2357,13 @@ function speakPartner(){
     their words cannot land on your turn. Cleared before the step, because the step
     may start the next line and close the gate again. */
  partnerSpeaking=true;
+ if(MODE==='PROMPTER') highlightRun();
  ActorReader.play(c.blob, ()=>{
   partnerSpeaking=false;
+  if(MODE==='PROMPTER'){ highlightAt(1); highlightStop(); }
   listenGate(LISTEN_SETTLE);
   listenHeard='';
-  if(MODE==='PARTNER') stageStep(1);
+  if(MODE==='PARTNER'||MODE==='PROMPTER') stageStep(1);
  });
 }
 /* Three seconds to get set. You press record, the count runs on screen, then it
@@ -2471,6 +2498,80 @@ function capabilityNote(){
 }
 window.capabilityNote=capabilityNote;
 
+/* ===== WORDS KEEPING UP WITH THE VOICE =====
+   There is no forced alignment here and there is not going to be. The recordings are
+   your reader's actual voice with no transcript, so nothing in this app knows the
+   moment a particular word lands. What it does know is how long the audio runs and
+   what the sentence looks like, so the line is divided by how long each word takes
+   to say: longer words take longer, a comma buys a beat, a full stop buys more.
+
+   That tracks well on an evenly read line and drifts on a dramatically paced one.
+   It is an estimate. It is drawn as an estimate - a moving edge, not a claim about
+   which syllable is in the air. */
+function wordWeights(text){
+ return String(text||'').split(/\s+/).filter(Boolean).map(w=>{
+  const bare=w.replace(/[^A-Za-z0-9'\u2019-]/g,'');
+  let wt=Math.max(1,bare.length)+1;
+  if(/[,;:]$/.test(w)) wt+=3;
+  if(/[.!?\u2026]$/.test(w)) wt+=6;
+  if(/[\u2014\u2013]$/.test(w)) wt+=2;
+  return {w,wt};
+ });
+}
+let HL={nodes:[],cum:[],total:0,raf:null};
+function highlightBuild(text){
+ const ws=wordWeights(text);
+ HL.total=ws.reduce((a,b)=>a+b.wt,0)||1;
+ HL.cum=[]; let acc=0;
+ ws.forEach(x=>{ HL.cum.push(acc+x.wt*0.5); acc+=x.wt; });
+ return ws.map((x,i)=>`<span class="wd" data-i="${i}">${esc2(x.w)}</span>`).join(' ');
+}
+function highlightBind(){
+ const t=$('sText');
+ HL.nodes = (t&&t.querySelectorAll) ? Array.from(t.querySelectorAll('.wd')) : [];
+}
+function highlightAt(frac){
+ const cut=Math.max(0,Math.min(1,frac))*HL.total;
+ HL.nodes.forEach((n,i)=>{
+  const said=HL.cum[i]<=cut;
+  const now=!said && i>0 && HL.cum[i-1]<=cut;
+  const cls='wd'+(said?' said':'')+(now?' now':'');
+  if(n.className!==cls) n.className=cls;
+ });
+}
+function highlightStop(){
+ if(HL.raf){ cancelAnimationFrame(HL.raf); HL.raf=null; }
+ HL.nodes=[]; HL.cum=[]; HL.total=0;
+}
+/* Follow the audio clock, not a timer, so the edge cannot drift away from the sound. */
+function highlightRun(){
+ highlightStop.keep=true;
+ const step=()=>{
+  const p=(window.ActorReader&&ActorReader.playPos)?ActorReader.playPos():null;
+  if(!p||!p.dur){ HL.raf=requestAnimationFrame(step); return; }
+  highlightAt(p.t/p.dur);
+  HL.raf=requestAnimationFrame(step);
+ };
+ if(HL.raf) cancelAnimationFrame(HL.raf);
+ HL.raf=requestAnimationFrame(step);
+}
+
+/* How much of your own line has actually been heard. Not a guess - this is the
+   recogniser's own output, walked against the line in order, so the edge only moves
+   when a word really landed. It is the honest version of "the system is listening". */
+function heardUpTo(expected,heard){
+ const norm=s=>String(s||'').toLowerCase().match(/[a-z0-9'\u2019]+/g)||[];
+ const E=norm(expected), H=norm(heard);
+ if(!E.length||!H.length) return 0;
+ let ei=0;
+ for(let hi=0; hi<H.length && ei<E.length; hi++){
+  if(H[hi]===E[ei]) ei++;
+  else if(ei+1<E.length && H[hi]===E[ei+1]) ei+=2;   // one word missed, keep going
+ }
+ return ei/E.length;
+}
+window.heardUpTo=heardUpTo;
+
 function stageTap(){
  if(sRecOn && (MODE==='PARTNER'||MODE==='PROMPTER')) return stageStep(1);
  stageRec();
@@ -2545,7 +2646,7 @@ function beginRecording(st,btn){
  /* ACTION is the cue for the scene, not just for the camera. If the line we are
     parked on belongs to someone else, it plays now - after the count, inside the
     take. Nothing plays during the count; the tape starts clean. */
- if(MODE==='PARTNER'){
+ if(MODE==='PARTNER'||MODE==='PROMPTER'){
   const b0=(SIDES.run||SIDES.script)[sIdx];
   if(b0&&!b0.mine) speakPartner();
  }
@@ -2577,7 +2678,7 @@ function showTakeReview(t, blob){
 }
 function closeReview(){ const w=$('takeReview'); if(w&&w.remove) w.remove(); }
 function reviewAgain(){ closeReview();
- if(MODE==='PARTNER'){ SIDES.run=activeScript(); sIdx=0; drawStage(); return; }
+ if(MODE==='PARTNER'||MODE==='PROMPTER'){ SIDES.run=activeScript(); sIdx=0; drawStage(); return; }
  if(MODE&&MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); if(sIdx<0)sIdx=0; drawStage(); } }
 /* A bad take is not a filing decision. It is gone, now, and you are back at the top
    of the scene ready to go - one press, no menu. This used to set a status flag and
@@ -2596,7 +2697,7 @@ function reviewDrop(id){
  try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
  try{ renderTakes(); }catch(e){}
  /* Back to the top, because the reason you erased it is that you want another go. */
- if(MODE==='PARTNER'){ SIDES.run=activeScript(); sIdx=0; drawStage(); }
+ if(MODE==='PARTNER'||MODE==='PROMPTER'){ SIDES.run=activeScript(); sIdx=0; drawStage(); }
  else if(MODE&&MODE!=='READER'){ SIDES.run=activeScript(); sIdx=SIDES.run.findIndex(b=>b.mine); if(sIdx<0)sIdx=0; drawStage(); }
  stageToast('Erased. Ready when you are.');
 }
